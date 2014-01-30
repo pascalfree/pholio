@@ -1,30 +1,39 @@
 <!DOCTYPE HTML>
 <html>
-<head>
-  <title>Pholio</title>
-  <link rel="stylesheet" href="index.css" type="text/css"></link>
-  <script src="//ajax.googleapis.com/ajax/libs/jquery/1.8.0/jquery.min.js"></script>
-  <script src="animation.js"></script>
-</head>
+  <head>
+    <title>Pholio</title>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1, minimum-scale=1">
+    <link rel="stylesheet" href="index.css" type="text/css">
+    <script src="//ajax.googleapis.com/ajax/libs/jquery/1.10.2/jquery.min.js"></script>
+    <script src="lib/jquery.mobile-events.min.js"></script>
+    <script src="config.js"></script>
+    <script src="core.js"></script>
+    <script src="animation.js"></script>
+  </head>
 
-<body>
+  <body>
 
-<div id="frame_container">
-  <div class="frame"></div>
-  <div class="frame current"></div>
-  <div class="frame"></div>
-</div>
+  <div id="frame_container">
+    <div class="frame" tabindex="-1"></div>
+    <div class="frame current" tabindex="-1"></div>
+    <div class="frame" tabindex="-1"></div>
+  </div>
 
-<div class="arrow" id="arrow_left"></div>
-<div class="arrow" id="arrow_right"></div>
-<div class="navigator" id="navigator_left"></div>
-<div class="navigator" id="navigator_right"></div>
+  <div class="arrow" id="arrow_left"></div>
+  <div class="arrow" id="arrow_right"></div>
+  <div class="navigator" id="navigator_left"></div>
+  <div class="navigator" id="navigator_right"></div>
 
-<div id="lightbox">
-<div id="close"></div>
-<img>
-<div class="lightbox_caption"></div>
-</div>
+  <div id="lightbox">
+    <div id="close"></div>
+    <div class="lightbox_caption"></div>
+    <img></img>
+  </div>
 
-</body>
+  <div id="touch_footer">
+    <div>&laquo; swipe &raquo;</div>
+  </div>
+
+  </body>
 </html>

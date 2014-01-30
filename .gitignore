@@ -2,4 +2,5 @@
 *~
 
 pages/*
+!pages/template.html
 !.gitignore

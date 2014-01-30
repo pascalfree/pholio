@@ -1,0 +1,523 @@
+//// VARIABLES
+//global vars
+html = {};
+html.touch = false;
+html.frame_element = '<div class="frame" tabindex="-1"></div>';
+html.max_page = -1;
+html.viewports = [800,500]; // list of available scaled images
+   
+
+//// UTILITY
+
+/*
+* hash( frame, image, user ): write parameters to hash (parameters are optional)
+* hash(): get current hash as array
+* hash()[0]: frame number as integer, false if no frame number is defined
+* hash()[1]: image path as a string, undefined if not set
+*/
+function hash( frame, image, user ) {
+  // get value
+  var h = window.location.hash.substr(1);
+  h = h.split(',');
+  h[0] = parseInt( h[0] );
+  // remove ambiguities
+  if( isNaN( h[0] ) ) {
+    h[0] = false; 
+  }
+  if( '' == h[1] ) { 
+    h[1] = undefined; 
+  }
+
+  // set new value
+  var changed = false;
+  if( $.type(frame) == 'string' || $.type(frame) == 'number' ) {
+    h[0] = frame; changed = true;
+  }
+  if( $.type(image) == 'string' ) {
+    h[1] = image; changed = true;    
+  }
+  if( $.type(user) == 'string' ) {
+    h[2] = user; changed = true;    
+  }
+  if( changed ) { window.location.hash = h.join(','); }
+
+  // get value
+  return h
+}
+
+// returns true if a single picture is viewed
+function is_full_view() {
+  return hash()[1] != undefined;
+}
+
+// get next higher available image size
+/*//--
+function ceil_viewport(dev_width) {
+  var width = false;
+  for(i in html.viewports) {
+    if( dev_width <= html.viewports[i] ) {
+      if(false === width || html.viewports[i] < width) {
+        width = html.viewports[i];
+      }
+    }
+  }
+  if(false === width) {
+    return Math.max.apply(this, html.viewports);
+  }
+  return width;
+}
+*/
+
+function image_loader(image, size, callback) {
+  image = $(image);
+  // find next available image size
+  // look in image div
+  var sizes = image.data('size') || [];
+  // look in viewer
+  if( v_sizes = image.parent('.viewer').data('size') ) {
+    $.merge(sizes, v_sizes)
+  }
+  // use global sizes
+  if( g_sizes = html.viewports.slice(0) ) { //slice to copy
+    $.merge(sizes, g_sizes);
+  }
+  var size;
+  // false if no sizes found:
+  if( 0 == sizes.length ) {
+    size = false;
+  } else {
+    // remove values < size
+    if( size ) {
+      var i = 0;
+      while( i<sizes.length ) {
+        if( sizes[i] < size ) {
+          sizes.splice(i,1);
+        } else {
+          ++i;
+        }
+      }
+    }
+    size = sizes.sort();
+  }
+  
+  var size_iterator = 0;
+  var img = $('<img>');
+  var img_url = image.attr('id');
+
+  var next_name = function() {
+    //tried everything nothing worked
+    if(-1 == size_iterator) {
+      return false;
+    }
+    // try largest file
+    if(!size || size_iterator >= size.length) {
+      return img_url;
+      size_iterator = -1;
+    } else { // try next size
+      return img_url + '_' + size[size_iterator++];
+    }
+  }
+
+  // try to load next bigger image, if size is not available
+  var retry = function() {
+    var n = next_name();
+    //img.off('error',retry);
+    if( n ) {
+      console.log('calling retry for img '+img.attr('id')+' with src='+img.attr('src')+ ' replaced to '+config.PAGE_FOLDER+'/'+n+ ' error callback is:'+ retry);
+      img.attr('src', config.PAGE_FOLDER+'/'+n);
+    }
+  }
+  img.on('error',retry);
+  retry();
+  
+  //stop retry if img loaded successfully
+  img.on('load', function() {
+    img.off('error',retry);
+    if (typeof callback == "function") {
+      callback(img);
+    }
+  });
+}
+
+// function queue class
+/* usage: 
+//   var il = new function_queue();
+//   var f = function..
+//   var g = function..
+//   il.put(f); il.put(g);
+//   il.ex(g); // will be called, when it's the first in the queue
+//   il.ex(f); // f will be called, then g will be called
+// why? images will show up in intended order, not jumping around.
+*/  
+function function_queue() {
+  var f_list = []; // queue of functions
+  var ex_list = []; // queue of functions to call
+  
+  function exex() {
+    var i;
+    while( -1 != (i = $.inArray(f_list[0], ex_list)) ) { // while first function in queue should be executed
+      var f = f_list[0];
+      // remove functio from lists;
+      f_list.splice(0,1);
+      ex_list.splice(i,1);
+      // execute function
+      f();
+    }
+  }
+  
+  // push function to list
+  this.put = function(f) {
+    f_list.push(f);
+  }
+  
+  // push function to list to be called, then try to call functions according to queue
+  this.ex = function(f) {
+    ex_list.push(f);
+    exex();
+  }
+}
+
+//// INITIALIZATION
+
+//initialize when loaded
+$(document).ready(function() {
+  //initialize window location hash
+  if( hash()[0] === false ) { hash(config.DEFAULT_PAGE); }  
+  var h = hash();
+
+  //initialize frames
+  if( h[0]>0 ) {
+    frame.create( $('.frame:first').attr('id','page'+(h[0]-1)).css({'left':'-100%'}).hide());
+  }
+  frame.create( $('.frame:eq(1)').attr('id','page'+h[0]).css({'left':'0'}).focus() ); //first visible frame
+  frame.create( $('.frame:eq(2)').attr('id','page'+(h[0]+1)).css({'left':'100%'}).hide());
+
+  //trigger init event
+  $(document).trigger('init.pho')
+
+  //initialize body and html background color
+  //?? $('body, html').css({'background-color': $('div.current').css('background-color') });
+});
+
+//// CAPTION
+
+var caption = {
+  show: function(e) {
+    $(this).trigger('show_caption.pho');  
+  },
+  
+  hide: function(e) {
+    $(this).trigger('hide_caption.pho');  
+  }
+}
+
+//// LIGHTBOX
+
+//initialize lightbox
+$(document).on('init.pho', function() {
+  $('div#lightbox').css({'opacity':'1'}).hide().on($.getTapEvent(), lightbox.hide);
+  
+   //initialize keyboard shortcuts
+  $('body').on('keydown', function(e) { 
+      if( 27 == e.keyCode ) { // esc
+          lightbox.hide();
+      }
+  });
+});
+
+var lightbox = {
+  _e: 'div#lightbox',
+  _visible: undefined,
+  
+  //return width that image will have in lightbox (approx.)
+  _get_image_width: function(image) {
+    var ratio = image.width()/image.height();
+    var img = $(lightbox._e).find('img');
+    var max_height = parseInt( img.css('max-height') )/100 * $(document).height();
+    var max_width = parseInt( img.css('max-width') )/100 * $(document).width();
+    // max is wider than image
+    if( max_width/max_height > ratio ) {
+      return max_height*ratio;
+    } else { // max is narrower than image
+      return max_width;
+    }
+  },
+  
+  show: function(e) {
+    lightbox._visible = true;
+    //load info
+    var $this = $(this);
+    var caption_span = $this.find('.caption span');
+    var caption_links = $this.find('.caption a');
+    var color = $this.css('background-color');
+    var img_url = $this.attr('id');
+
+    image_loader($this, lightbox._get_image_width($this), function(img) { //wait for loaded image
+      var e = $(lightbox._e);
+      //insert image
+      e.find('img').replaceWith( img );
+
+      //load caption
+      e.find('.lightbox_caption').text( caption_span.text() ).css({'color': img.css('color') });
+           // .append(caption_links.clone().css({'float':'none', 'display':'inline'}));
+
+      //adjust color /and hide scrollbar
+      e.css({'background-color':color})
+      $('body, html').css({'overflow': 'hidden'});
+
+      //finish animation
+      e.trigger({type:'load_lightbox_end.pho', image:img});
+
+      //update hash
+      hash( null, img_url );
+    });
+
+    //start animation
+    $(lightbox._e).trigger({type:'load_lightbox_start.pho', image:$this});
+  },
+  
+  hide: function(e) {  
+    //?? $('body, html').css({'background-color': $('div.current').css('background-color'), 'overflow': ''});
+
+    $(lightbox._e).trigger('hide_lightbox.pho');
+
+    //update hash
+    hash( null, "" );
+    
+    $(lightbox._e).promise().done(function() {
+        lightbox._visible = false;
+    });
+  },
+  
+  toggle: function(e) {
+    // show/hide lightbox
+    var image = $(this);
+    if( !image.length && lightbox._visible ) { lightbox.hide(); }
+    else if( !lightbox._visible ){ lightbox.show.apply(image); }
+  }
+}
+
+//// NAVIGATION
+
+//initialize navigation
+$(document).on('init.pho', function() {
+  //init onhashchange
+  $(window).on('hashchange', navigate.move_event('hash'));
+  
+  //initialize navigation action
+  $('div#navigator_right').on($.getTapEvent(), navigate.move_event('right'));
+  $('div#navigator_left').on($.getTapEvent(), navigate.move_event('left'));
+  navigate.toggle();
+  
+  //initialize swipe gesture
+  $('body').on('swipeleft', navigate.move_event('right'));
+  $('body').on('swiperight', navigate.move_event('left'));
+  
+  //for small screens: hide navigation, swipe instead
+  $(window).one('touchstart', function() {
+      if (screen.width < 820) {
+          html.touch = true;
+          // hide navigation
+          navigate.toggle();
+          // show touch footer
+          navigate._touch_footer();
+      }
+  });
+  
+  //initialize keyboard shortcuts
+  $('body').on('keydown', function(e) { 
+      if( 37 == e.keyCode ) { // left
+          navigate.move('left');
+      } else if( 39 == e.keyCode ) { // right
+          navigate.move('right');
+      }
+  });
+});
+
+var navigate = {
+  toggle: function() {
+    //check if navigators should be visible or not
+    var page = parseInt( $('div.current').attr('id').substr(4) );
+    var ret = new Array;
+
+    if( html.max_page != -1 && page == html.max_page ) { 
+      ret['right'] = false;
+    } else {
+      ret['right'] = true;
+    }
+
+    if( page == 0 ) {
+      ret['left'] = false;
+    } else {
+      ret['left'] = true;
+    }
+    
+    //hide/show navigation
+    // hide on touch devices
+    if(html.hasOwnProperty('touch') && html.touch) {
+      $('div#navigator_right, div#arrow_right').hide();
+      $('div#navigator_left, div#arrow_left').hide();
+    } else {
+      $('div#navigator_right, div#arrow_right').toggle(ret['right']);
+      $('div#navigator_left, div#arrow_left').toggle(ret['left']);
+    }
+
+    return ret;    
+  },
+  
+  move_event: function(to) {
+    return function() { return navigate.move(to); }
+  },
+  
+  move: function(to) {
+      if(to == 'hash') {
+        return navigate._hash();
+      }
+  
+      navigate._touch_footer(false); //hide touch footer
+      
+      if( navigate.toggle()[to] == 0 || is_full_view() ) { return; } //last element, can't go right / or is viewing single picture
+  
+      var current = $('div.current');
+      
+      var new_frame = navigate['_'+to](current);
+
+      //set document background
+      //?? ('body, html').css({'background-color': current.next().css('background-color')});
+
+      //change "current" flag (css-class) to frame on the right and focus new frame
+      current.removeClass('current');
+      new_frame.addClass('current')
+
+      $('#frame_container').trigger({type:'move_'+to+'.pho',current:current});
+      
+      //update hash
+      hash( new_frame.attr('id').substr(4) );
+      //wait for animations to finish
+      new_frame.promise().done(function() {
+        // focus frame
+        new_frame.focus();
+      });
+
+      navigate.toggle();
+  },
+  
+  _hash: function() {
+    var h = hash();
+    var curr = parseFloat( $('div.current').attr('id').substr(4) );
+
+    // move left or right depending on hash value
+    if( h[0] != curr ) {
+      if( h[0] == curr+1 ) { navigate.move('right'); }
+      else if( h[0] == curr-1 ) { navigate.move('left'); }
+      else { location.reload(); }
+    }
+    
+    lightbox.toggle.apply($("[id='"+h[1]+"']"));
+  },
+  
+  _left: function(current) {
+    //prepend new frame if this is the first frame.
+    if( current.prev().is($('.frame:first')) ) {
+      frame.create( $('#frame_container').prepend(html.frame_element).children(':first').css({'left':'-100%'}).hide());
+    }
+    return current.prev();
+  },
+  
+  _right: function(current) {
+    //append new frame if this is the last frame.
+    if( current.next().is($('.frame:last')) ) {
+      frame.create( $('#frame_container').append(html.frame_element).children(':last').css({'left':'100%'}).hide());
+    }
+    return current.next();
+  },
+  
+  _touch_footer: function(enable) {
+    if(!html.touch) { return; }
+    enable = (enable===undefined)? true : enable;
+    
+    if(enable) {
+      $('#touch_footer').trigger('show_touch_footer.pho');
+    } else {
+      $('#touch_footer').trigger('hide_touch_footer.pho');
+    }  
+  }
+}
+
+//// FRAME
+
+var frame = {
+  create: function( frame_element ) {
+    //load page and fill into frame
+    // find number for new frame
+    if( !frame_element.attr('id') ) {
+      if( n = frame_element.prev().attr('id') ) { n = parseFloat( n.substr(4) ) + 1; }  
+      else if( n = frame_element.next().attr('id') ) { n = parseFloat( n.substr(4) ) - 1 }
+      else { return; }
+      frame_element.attr('id','page'+n);
+    }
+
+    curr = parseFloat( frame_element.attr('id').substr(4) );
+    if( curr < 0 ) { return; } //don't load pages below 0
+    //load and insert page
+    (function(current) {
+      frame_element.load(config.PAGE_FOLDER+'/'+current+'.html', function(resp, status) {
+        if( status == "error") { //found last page
+          // set new limit
+          html.max_page = (html.max_page==-1 || current <= html.max_page)? current-1 : html.max_page;
+          //check if new limit is exceeded
+          if(hash()[0] > html.max_page) {
+            hash(html.max_page);
+            navigate.move('hash'); //fix: onhashchange may miss
+          }
+          navigate.toggle();
+          //frame_element.remove(); //buggy
+          return;
+        }
+        frame._init_viewer( frame_element ); //initialize viewer
+        if(frame_element.is( $('div.current') )) { 
+          navigate.move('hash'); // load image etc.
+        }
+      });
+    })(curr);
+  },
+
+  _init_viewer: function( frame_element ) {
+    //copy background color 
+    var color = frame_element.children('div.viewer').css('background-color');
+    frame_element.css({'background-color':color});
+
+    var images = frame_element.find('.image');
+    var queue = new function_queue();
+    //load images
+    images.each( function() {
+      var img = $(this);
+      var ext = img.data('ext') || ""; //get file extension if any;
+      var img_url = img.attr('alt');
+      if( !img_url ) { img_url = img.attr('id') }
+      
+      image_loader(img, img.width(), function(img_element) {
+        img_element.hide();
+        img.prepend( img_element.fadeIn().css('display','') );
+        /*
+        var show = function() {
+          img.prepend( img_element.fadeIn().css('display','') ); //"display" should be block (defined in css) 
+        };
+        queue.put(show);
+        img_element.load(function() {
+          queue.ex(show);
+        })
+        */
+      });
+
+      img.hover( caption.show, caption.hide );
+      $('.caption').css({'opacity': config.CSS_CAPTION_OPACITY}) //works in IE
+    });
+
+    //make images clickable
+    images.on($.getTapEvent(), lightbox.show );
+    
+    //enable external links
+    frame_element.find('[class^=ref_]').attr('target','_blank');
+  }
+}

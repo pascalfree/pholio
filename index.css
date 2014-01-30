@@ -1,22 +1,31 @@
 html, body, #frame_container {
   width: 100%;
+  /*height: 100%;*/
   padding: 0;
   margin: 0;
   background-color: white;
   color: white;
-  /*overflow-x: hidden;*/
+  overflow-x: hidden;
 }
 
-/* LIGHTBOX */
+* {
+  webkit-tap-highlight-color: rgba(0,0,0,0);
+}
+
+.frame:focus {
+    outline: none;
+}
+
+/* LIGHTBOX */  
 
 div#lightbox {
-  position: fixed;
+  position: absolute; /*more reliable on mobile*/
   top: 0;
   left: 0;
   margin: 0;
   padding: 0;
   width: 100%;
-  height: 101%; /*table fix*/
+  height: 100%;
   background-color: white;
   text-align: center;
   overflow: auto;
@@ -24,13 +33,32 @@ div#lightbox {
 }
 
 div#lightbox img {
-  margin: 30px auto 10px;
+  margin: 0 auto;
+  max-width: 96%;
+  max-height: 88%;
+  display: block;
 }
 
 div#lightbox .lightbox_caption{
-  margin-bottom: 30px;
+  margin-top: 0;
   font-size: 16pt;
   font-family: verdana, arial, sans;
+  height: 10%;
+  line-height: 300%;
+}
+
+@media (max-width: 630px), (max-height: 500px) {
+  div#lightbox .lightbox_caption{
+    display: none;
+  }
+  div#lightbox img {
+    margin: auto;
+    max-width: 100%;
+    max-height: 100%;
+  }
+  div#close {
+    display: none !important;
+  }
 }
 
 /* VIEWER */
@@ -40,9 +68,11 @@ div.frame {
   top: 0;
   min-height: 100%;
   width: 100%;
+  overflow: auto;
   background-color: black;
   padding: 0;
   margin: 0;
+  color: white;
 }
 
 div.viewer {
@@ -55,22 +85,34 @@ div.image {
 }
 
 div.image img{
+  display: block;
+  margin: 0;
+  padding: 0;
   width: 100%;
-  height: 100%;
+  /*height: 100%;*/
 }
+
+@media (max-width: 630px), (max-height: 500px) {
+  .viewer {
+    margin-top: 0 !important;
+  }
+}
+
+/* CAPTION */
 
 div.caption {
   position: absolute;
-  bottom: 0px;
-  width: 100%;
-  height: 30px;
+  bottom: 0;
+  left: 0;
+  width: 90%;
+  height: auto;
   font-size: 18pt;
   font-family: verdana, arial, sans;
   text-align: right;
-  padding: 10px 0;
+  padding: 10px 5%;
   background-color: black;
   color: white;
-  opacity: .5;
+  opacity: .5; /*adjust in jquery*/
   display: none;
 }
 
@@ -79,12 +121,56 @@ div.caption_left {
 }
 
 div.caption span {
-  position: absolute;
-  right: 10px;
+  /*position: absolute;
+  right: 10px;*/
 }
 
 div.caption_left span {
   left: 10px; 
+  right: auto;
+}
+
+div.caption_top {
+  top: 0;
+  bottom: auto;
+}
+
+.text_white {
+  color: white !important;
+}
+
+.text_black {
+  color: black !important;
+}
+
+.white {
+  background-color: white !important;
+}
+
+/* References */
+.ref_500px, .ref_flickr {
+  display: block;
+  float: right;
+  width: 24px;
+  height: 24px;
+  margin: 5px;
+}
+
+.ref_500px {
+  background-image: url('res/500px.png');
+}
+
+.ref_flickr {
+  background-image: url('res/flickr.png');
+}
+
+@media (max-width: 630px), (max-height: 500px) {
+  div.caption {
+    font-size: 12pt;
+  }
+  .ref_500px, .ref_flickr {
+    margin: 0 5px;
+  }
 }
 
 /* NAVIGATION */
@@ -94,6 +180,7 @@ div.navigator {
   top: 0;
   height: 100%;
   width: 8%;
+  min-width: 35px;
   margin: 0;
   background-color: white;
   opacity: 0;
@@ -105,7 +192,7 @@ div#navigator_left {
 }
 
 div#navigator_right {
-  right: 0;
+  right: 0;  /*adjusted in jquery*/
 }
 
 div.arrow {
@@ -116,13 +203,13 @@ div.arrow {
 }
 
 div#arrow_right {
-  right: 10px;
   background-image: url('res/arrow_right.png');
+  right: 10px; /*adjusted in jquery*/
 }
 
 div#arrow_left {
-  left: 10px;
   background-image: url('res/arrow_left.png');
+  left: 10px;
 }
 
 div#close {
@@ -146,16 +233,38 @@ div#close {
   padding: 0 10px 10px 0;
 }
 
-/* OTHER */
-
-.text_white {
-  color: white !important;
+#touch_footer {
+  display: none;
+  position: absolute;
+  bottom: 0;
+  right: 0;
+  left: 0;
+  font-size: 60px;
+  text-align: center;
+  color: black;
+  background-color: #eee;
+  opacity: 0.7;
+  padding: 10px 0;
 }
 
-.text_black {
-  color: black !important;
+/* Fullscreen */
+:full-screen #frame_container, {
+  position: absolute;
+  top: 0;
+  left: 0;
+  height: 100%;
 }
 
-.white {
-  background-color: white !important;
+:-webkit-full-screen #frame_container {
+  position: absolute;
+  top: 0;
+  left: 0;
+  height: 100%;
+}
+
+:-moz-full-screen #frame_container {
+  position: absolute;
+  top: 0;
+  left: 0;
+  height: 100%;
 }

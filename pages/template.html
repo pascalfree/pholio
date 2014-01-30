@@ -1,0 +1,202 @@
+<div class="viewer" style="width: 820px; background-color:#000; margin: 20px auto;">
+
+<!-- 
+  This is the template file for a frame. It shows some of the css classes for the caption.
+  The template also contains sizes of the pictures for some arrangements. v means vertical picture and h horizontal.
+  The sizes are meant to fit into a frame width of 800px and may need modification for other frame sizes.
+  
+  An empty frame consists of the div element above (and the closing one in the end). Always include them.
+  The background color of the frame can be adjusted in the top div.
+  A footer may be included as well, see end of the file.
+  Frames are numbered: 0.html, 1.html, etc. the default starting frame can be set in the config.js file.
+  
+  general anatomy of a picture:
+  <div class="image" id="<<path to full size picture visible in lightbox>>" alt="<<path to preview picture>>" style="
+    height: <<height of preview picture>>;
+    width: <<width of preview picture>>;
+    background-color: <<background color, visible before picture has loaded, also sets bg-color of lightbox>>;
+    color: <<color of the caption text in the lightbox (default white)>>;
+    <<additional css>>
+">
+   <div class="caption <<css classes formatting the caption>>" style="<<optional, may be formatet inline>>"><span><<Caption text>></span></div>
+ </div>
+ 
+ Caption css classes:
+ *  caption_left: show caption on the left side (default is right)
+ *  caption_top: show caption on top (default is bottom)
+ *  text_black: use black text (default is white)
+ *  white: use white background for caption (default is black)
+ 
+ The Caption may also contain external links, as shown in the "1 landscape" template
+-->
+
+
+<!-- 
+  1 landscape
+  
+  hhhhhhh
+  hhh1hhh
+  hhhhhhh
+-->
+
+  <div class="image" id="0/full_size_picture1.JPG" alt="0/preview_picture1.JPG" style="
+      height: 533px;
+      width: 800px;
+      background-color: black;
+      margin: 10px;
+      padding: 0px;
+      float: left;
+  ">
+     <div class="caption caption_left caption_top"><span>Caption and additional external links</span>
+        <a class="ref_500px" alt="500px" title="500px" href="http://500px.com/photo/xxxxxxx"></a>
+        <a class="ref_flickr" alt="flickr" title="flickr" href="http://www.flickr.com/photos/xxxx/xxxxxxxxx/"></a>
+     </div>
+   </div>
+
+
+<!-- 
+  2 landscape
+
+  hhhhhhh  hhhhhhh
+  hhh1hhh  hhh2hhh
+  hhhhhhh  hhhhhhh
+-->
+
+  <div class="image" id="0/full_size_picture1.JPG" alt="0/preview_picture1.JPG" style="
+      height: 260px;
+      width: 390px;
+      background-color: #111;
+      margin: 10px;
+      float: left;
+  ">
+     <div class="caption caption_left"><span>Caption on bottom left corner</span></div>
+   </div>
+
+  <div class="image" id="0/full_size_picture2.JPG" alt="0/preview_picture2.JPG" style="
+      height: 260px;
+      width: 390px;
+      background-color: #111;
+      margin: 10px;
+      float: left;
+  ">
+     <div class="caption"><span>Caption</span></div>
+  </div>
+
+<!-- 
+  1 portrait - 1 landscape
+  may be swaped
+
+  vvv  hhhhhhh
+  v1v  hhh2hhh
+  vvv  hhhhhhh
+-->
+
+  <div class="image" id="0/full_size_picture1.JPG" alt="0/preview_picture1.JPG" style="
+      height: 360px;
+      width: 240px;
+      background-color: black;
+      margin: 10px;
+      float: left;
+  ">
+     <div class="caption caption_top"><span>Caption on top right corner, white text on black</span></div>
+   </div>
+   
+  <div class="image" id="0/full_size_picture2.JPG" alt="0/preview_picture2.JPG" style="
+      height: 360px;
+      width: 540px;
+      background-color: black;
+      margin: 10px;
+      padding: 0px;
+      float: left;
+  ">
+     <div class="caption caption_left caption_top"><span>Caption on top left corner, white text on black</span></div>
+   </div>
+
+<!-- 
+  1 portrait - 2 landscape - inline
+  may be swaped
+
+  hhhhhhh  vvv  hhhhhhh
+  hhh1hhh  v2v  hhh3hhh
+  hhhhhhh  vvv  hhhhhhh
+-->
+
+
+  <div class="image" id="0/full_size_picture1.JPG" alt="0/preview_picture1.JPG" style="
+      height: 207px;
+      width: 311px;
+      background-color: black;
+      margin: 10px;
+      float: left;
+  ">
+     <div class="caption caption_left"><span>Caption on bottom left corner</span></div>
+   </div>
+
+  <div class="image" id="0/full_size_picture2.JPG" alt="0/preview_picture2.JPG" style="
+      height: 207px;
+      width: 138px;
+      background-color: black;
+      margin: 10px;
+      float: left;
+  ">
+     <div class="caption" style="font-size:12pt;"><span>Caption with custom font size</span></div>
+   </div>
+
+  <div class="image" id="0/full_size_picture3.JPG" alt="0/preview_picture3.JPG" style="
+      height: 207px;
+      width: 311px;
+      background-color: black;
+      margin: 10px;
+      float: left;
+  ">
+     <div class="caption"><span>Caption</span></div>
+  </div>
+
+<!-- 
+  1 portrait - 2 landscape
+  may be swaped
+
+  vvv  hh2hh
+  vvv  hhhhh
+  v1v 
+  vvv  hh3hh
+  vvv  hhhhh 
+-->
+
+  <div class="image" id="0/full_size_picture1.JPG" alt="0/preview_picture1.JPG" style="
+      height: 561px;
+      width: 374px;
+      background-color: white;
+      margin: 10px;
+      padding: 0px;
+      float: left;
+  ">
+    <div class="caption caption_left caption_top text_black white"><span>Caption on top left corner, black text on white</span></div>
+  </div>
+
+  <div class="image" id="0/full_size_picture2.JPG" alt="0/preview_picture2.JPG" style="
+      height: 270px;
+      width: 406px;
+      background-color: black;
+      margin: 10px;
+      float: left;
+  ">
+     <div class="caption text_black white"><span>Caption on bottom right corner, black on white</span></div>
+   </div>
+
+  <div class="image" id="0/full_size_picture3.JPG" alt="0/preview_picture3.JPG" style="
+      height: 271px;
+      width: 406px;
+      background-color: #e2e8f2;
+      margin: 10px;
+      float: left;
+  ">
+     <div class="caption text_black white"><span>Caption</span></div>
+  </div>
+
+<!-- A footer for some text or links -->
+
+  <div class="copyright" style="color: #999">&copy; Copyright</div>
+
+<!-- include this </div> in your frame -->
+</div>
