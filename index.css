@@ -7,6 +7,8 @@ html, body, #frame_container {
   /*overflow-x: hidden;*/
 }
 
+/* LIGHTBOX */
+
 div#lightbox {
   position: fixed;
   top: 0;
@@ -19,12 +21,19 @@ div#lightbox {
   text-align: center;
   overflow: auto;
   -webkit-overflow-scrolling: touch; /*for iOS*/
-  /*z-index: 99;*/
 }
 
 div#lightbox img {
-  margin: 30px auto;
+  margin: 30px auto 10px;
 }
+
+div#lightbox .lightbox_caption{
+  margin-bottom: 30px;
+  font-size: 16pt;
+  font-family: verdana, arial, sans;
+}
+
+/* VIEWER */
 
 div.frame {
   position: absolute;
@@ -36,6 +45,50 @@ div.frame {
   margin: 0;
 }
 
+div.viewer {
+  margin: 0 auto;
+}
+
+div.image {
+  cursor: pointer;
+  position: relative;
+}
+
+div.image img{
+  width: 100%;
+  height: 100%;
+}
+
+div.caption {
+  position: absolute;
+  bottom: 0px;
+  width: 100%;
+  height: 30px;
+  font-size: 18pt;
+  font-family: verdana, arial, sans;
+  text-align: right;
+  padding: 10px 0;
+  background-color: black;
+  color: white;
+  opacity: .5;
+  display: none;
+}
+
+div.caption_left {
+  text-align: left;  
+}
+
+div.caption span {
+  position: absolute;
+  right: 10px;
+}
+
+div.caption_left span {
+  left: 10px; 
+}
+
+/* NAVIGATION */
+
 div.navigator {
   position: fixed;
   top: 0;
@@ -44,6 +97,7 @@ div.navigator {
   margin: 0;
   background-color: white;
   opacity: 0;
+  cursor: pointer;
 }
 
 div#navigator_left {
@@ -52,15 +106,6 @@ div#navigator_left {
 
 div#navigator_right {
   right: 0;
-}
-
-div.viewer {
-  margin: 0 auto;
-}
-
-div.image img{
-  width: 100%;
-  height: 100%;
 }
 
 div.arrow {
@@ -89,11 +134,28 @@ div#close {
   width: 31px;  
   background-image: url('res/x.png');
   opacity: .5;
+  cursor: pointer;
 }
+
+/* FOOTNOTE */
 
 .copyright {
   float: right;
   font-size: 10pt;
   font-family: verdana, arial, sans;
   padding: 0 10px 10px 0;
+}
+
+/* OTHER */
+
+.text_white {
+  color: white !important;
+}
+
+.text_black {
+  color: black !important;
+}
+
+.white {
+  background-color: white !important;
 }

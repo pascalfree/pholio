@@ -1,3 +1,4 @@
+//// VARIABLES
 //config
 PAGE_FOLDER = 'pages';
 DEFAULT_PAGE = 0;
@@ -6,6 +7,33 @@ DEFAULT_PAGE = 0;
 FRAME_ELEMENT = '<div class="frame"></div>';
 MAX_PAGE = -1;
 
+//// UTILITY
+
+function hash( frame, image, user ) {
+  // get value
+  var h = window.location.hash.substr(1);
+  h = h.split(',');
+  if( !isNaN( h[0] ) ) { h[0] = parseFloat( h[0] ); }
+  else { h[0] == false; }
+
+  // set new value
+  var changed = false;
+  if( $.type(frame) == 'string' || $.type(frame) == 'number' ) {
+    h[0] = frame; changed = true;
+  }
+  if( $.type(image) == 'string' ) {
+    h[1] = image; changed = true;    
+  }
+  if( $.type(user) == 'string' ) {
+    h[2] = user; changed = true;    
+  }
+  if( changed ) { window.location.hash = h.join(','); }
+
+  // get value
+  return h
+}
+
+//// INITIALIZATION
 $(document).ready(init); //initialize when loaded
 
 function init() {
@@ -13,19 +41,18 @@ function init() {
   $(window).bind('hashchange', move_by_hash);
   
   //initialize window location hash
-  if( !window.location.hash ) { window.location.hash = DEFAULT_PAGE; }  
-  var h = parseFloat(window.location.hash.substr(1));
+  if( !hash()[0] ) { hash(DEFAULT_PAGE); }  
+  var h = hash();
 
   //initialize lightbox
   $('div#lightbox').css({'opacity':'1'}).hide().click( hide_lightbox );
 
-
   //initialize frames
-  if( h>0 ) {
-    fill_frame( $('.frame:first').attr('id','page'+(h-1)).hide().css({'left':'-100%'}) );
+  if( h[0]>0 ) {
+    fill_frame( $('.frame:first').attr('id','page'+(h[0]-1)).hide().css({'left':'-100%'}) );
   }
-  fill_frame( $('.frame:eq(1)').attr('id','page'+h).css({'left':'0'}) ); //first visible frame
-  fill_frame( $('.frame:eq(2)').attr('id','page'+(h+1)).hide().css({'left':'100%'}) );
+  fill_frame( $('.frame:eq(1)').attr('id','page'+h[0]).css({'left':'0'}) ); //first visible frame
+  fill_frame( $('.frame:eq(2)').attr('id','page'+(h[0]+1)).hide().css({'left':'100%'}) );
 
   //initialize navigation action
   $('div.navigator').css({ opacity: 0 }).hover( function() {
@@ -49,39 +76,70 @@ function init_viewer( frame ) {
   var images = frame.find('.image');
   //load images
   images.each( function() {
-    var img = $(this).attr('alt');
-    if( !img ) { img = $(this).attr('id') }
-    $(this).append($('<img>')).find('img').attr('src', PAGE_FOLDER+'/'+img);
+    var img = $(this);
+    var img_url = img.attr('alt');
+    if( !img_url ) { img_url = img.attr('id') }
+    var img_element = $('<img>').attr('src', PAGE_FOLDER+'/'+img_url).hide();
+    img_element.load(function() {
+      img.prepend( $(this).fadeIn() );
+    })
+    img.hover( show_caption, hide_caption );
   });
 
   //make images clickable
   images.click( show_lightbox );
 }
 
+//// CAPTION
+
+function show_caption(e) {
+  $(this).find('.caption').stop(false, true).fadeIn();
+}
+
+function hide_caption(e) {
+  $(this).find('.caption').stop().fadeOut();
+}
+
+//// LIGHTBOX
+
 function show_lightbox(e) {
-  //load image
-  var img = $(this).attr('id');
-  $('div#lightbox img').attr('src', PAGE_FOLDER+'/'+img);
-
-  //adjust color /and scroll to top
+  //load info
+  var caption_span = $(this).find('.caption span');
   var color = $(this).css('background-color');
-  $('div#lightbox, body, html').css({'background-color':color}); //.animate({'scrollTop':0}, 'fast');
+  var img_url = $(this).attr('id');
+  var img = $('<img src="'+PAGE_FOLDER+'/'+img_url+'">');
+  //wait for loaded image
+  img.load(function() {
+    //insert image
+    $('div#lightbox img').remove();
+    $('div#lightbox').prepend( $(this) );
 
-  e.stopPropagation();
-  //$(document).one('click',hide_lightbox);
+    //$('div#lightbox img').attr('src', PAGE_FOLDER+'/'+img_url);
+    //load caption
+    $('div#lightbox .lightbox_caption').text( caption_span.text() ).css({'color': caption_span.css('color') });
 
-  //adjust height and fade in
-  if( $(window).height() != $(document).height() ) {
-    $('div#lightbox').css({'overflow':'hidden'});
-  } else {
-    $('div#lightbox').css({'overflow':'auto'});
-  }
+    //adjust color /and scroll to top
+    $('div#lightbox, body, html').css({'background-color':color}); //.animate({'scrollTop':0}, 'fast');
 
-  $('div#lightbox').fadeIn( function() {
-    $('body, html, div.current').height( 0 ).css({'overflow-y':'hidden'});
-    $(this).css({'overflow':'auto'})
-    $('#close').fadeIn();
-  }); //height( $(document).height() )
+    e.stopPropagation();
+    //$(document).one('click',hide_lightbox);
+
+    //adjust scrollbars and fade in
+    if( $(window).height() != $(document).height() ) {
+      $('div#lightbox').css({'overflow':'hidden'});
+    } else {
+      $('div#lightbox').css({'overflow':'auto'});
+    }
+
+    $('div#lightbox').fadeIn( function() {
+      $('body, html, div.current').height( 0 ).css({'overflow-y':'hidden'});
+      $(this).css({'overflow':'auto'})
+      $('#close').fadeIn();
+    }); //height( $(document).height() )
+
+    //update hash
+    hash( null, img_url );
+  })
 }
 
 function hide_lightbox() {
@@ -96,9 +154,15 @@ function hide_lightbox() {
     $('div#lightbox').css({'overflow':'auto'});
   }
 
-  $('div#lightbox').fadeOut();
-  $('div#lightbox img').attr('src', '');
+  $('div#lightbox').fadeOut(function() {
+    $('div#lightbox img').attr('src', '');
+  });
+
+  //update hash
+  hash( null, "" );
 }
+
+//// NAVIGATION
 
 function toggle_navigator() {
   //check if navigators should be visible or not
@@ -125,16 +189,20 @@ function toggle_navigator() {
 }
 
 function move_by_hash() {
-  //move left or right depending on hash value
-  var hash = parseFloat( window.location.hash.substr(1) );
+  var h = hash();
   var curr = parseFloat( $('div.current').attr('id').substr(4) );
 
-  hide_lightbox();
+  // move left or right depending on hash value
+  if( h[0] != curr ) {
+    if( h[0] == curr+1 ) { move_right(); }
+    else if( h[0] == curr-1 ) { move_left(); }
+    else { location.reload(); }
+  }
 
-  if( hash == curr ) { return; }
-  else if( hash == curr+1 ) { move_right(); }
-  else if( hash == curr-1 ) { move_left(); }
-  else { location.reload(); }
+  // show/hide lightbox
+  var visible = $('div#lightbox').is(':visible');
+  if( !h[1] && visible ) { hide_lightbox(); }
+  else if( !visible ){ $("[id='"+h[1]+"']").click(); }
 }
 
 function move_right() {
@@ -150,17 +218,17 @@ function move_right() {
   $('body, html').css({'background-color': current.next().css('background-color'), 'overflow-x':'hidden'});
 
   //move to right frame
-  var current_frame = current.removeClass('current').animate({'left':'-100%'}, function() { 
+  var current_frame = current.removeClass('current').animate({'left':'-100%'}, 'slow', function() { 
                         $('body, html').css({'overflow-x':'auto'});
                         $(this).hide() 
                       })
-                    .next().show().addClass('current').animate({'left':'0','scrollTop':0});
+                    .next().show().addClass('current').animate({'left':'0','scrollTop':0}, 'slow');
   $('body, html').animate({'scrollTop':0});
 
   //update hash
-  window.location.hash = parseFloat( current_frame.attr('id').substr(4) );
+  hash( current_frame.attr('id').substr(4) );
 
-  toggle_navigator()
+  toggle_navigator();
 }
 
 function move_left() {
@@ -176,18 +244,20 @@ function move_left() {
   $('body, html').css({'background-color': current.prev().css('background-color') , 'overflow-x':'hidden'});
 
   //move to right frame
-  var current_frame = current.removeClass('current').animate({'left':'100%'}, function() { 
+  var current_frame = current.removeClass('current').animate({'left':'100%'}, 'slow', function() { 
                           $('body, html').css({'overflow-x':'auto'});
                           $(this).hide();
                       })
-                      .prev().show().addClass('current').animate({'left':'0','scrollTop':0});
+                      .prev().show().addClass('current').animate({'left':'0','scrollTop':0}, 'slow');
   $('body, html').animate({'scrollTop':0});
 
   //update hash
-  window.location.hash = parseFloat( current_frame.attr('id').substr(4) );
+  hash( current_frame.attr('id').substr(4) );
 
   toggle_navigator();
 }
+
+//// LOADING
 
 function fill_frame( frame ) {
   //load page and fill into frame
@@ -209,6 +279,7 @@ function fill_frame( frame ) {
       return;
     }
     init_viewer( frame ); //initialize viewer
+    if(frame.is ($('div.current') )) { move_by_hash() } // load image etc.
   })
 }
 
