@@ -68,14 +68,15 @@ function ceil_viewport(dev_width) {
 }
 */
 
-function image_loader(image, size, callback) {
+function image_loader(image, size) {
   image = $(image);
   // find next available image size
   // look in image div
   var sizes = image.data('size') || [];
+  sizes = sizes.slice(0);
   // look in viewer
   if( v_sizes = image.parent('.viewer').data('size') ) {
-    $.merge(sizes, v_sizes)
+    $.merge(sizes, v_sizes.slice(0))
   }
   // use global sizes
   if( g_sizes = html.viewports.slice(0) ) { //slice to copy
@@ -119,24 +120,25 @@ function image_loader(image, size, callback) {
   }
 
   // try to load next bigger image, if size is not available
+  // because the load event is called on an image if the src attribute is changed inside the error event handler (and the error event isn't anymore), the next img is loaded on a new img element, until it loads successfully. Then the src is copied to the real image.
+  
+  //image loaded (really). apply src to real src.
+  var apply_src = function() {
+    $(this).off('error');
+    img.attr('src', $(this).attr('src') );
+  }
+  
   var retry = function() {
     var n = next_name();
     //img.off('error',retry);
     if( n ) {
-      console.log('calling retry for img '+img.attr('id')+' with src='+img.attr('src')+ ' replaced to '+config.PAGE_FOLDER+'/'+n+ ' error callback is:'+ retry);
-      img.attr('src', config.PAGE_FOLDER+'/'+n);
+      proxy_img = $('<img>').on('error',retry);
+      proxy_img.on('load', apply_src).attr('src', config.PAGE_FOLDER+'/'+n);
     }
   }
-  img.on('error',retry);
   retry();
-  
-  //stop retry if img loaded successfully
-  img.on('load', function() {
-    img.off('error',retry);
-    if (typeof callback == "function") {
-      callback(img);
-    }
-  });
+
+  return img;
 }
 
 // function queue class
@@ -195,8 +197,9 @@ $(document).ready(function() {
   //trigger init event
   $(document).trigger('init.pho')
 
-  //initialize body and html background color
-  //?? $('body, html').css({'background-color': $('div.current').css('background-color') });
+  //initialize body and html background color 
+  //(otherwise some bad color is visible when moving to the side and scrolling up to a frame with less height)
+  $('body, html').css({'background-color': $('div.current').css('background-color') });
 });
 
 //// CAPTION
@@ -228,13 +231,14 @@ $(document).on('init.pho', function() {
 var lightbox = {
   _e: 'div#lightbox',
   _visible: undefined,
+  _restore: [],
   
   //return width that image will have in lightbox (approx.)
-  _get_image_width: function(image) {
+  get_image_width: function(image) {
     var ratio = image.width()/image.height();
     var img = $(lightbox._e).find('img');
-    var max_height = parseInt( img.css('max-height') )/100 * $(document).height();
-    var max_width = parseInt( img.css('max-width') )/100 * $(document).width();
+    var max_height = parseInt( img.css('max-height') )/100 * $(window).height();
+    var max_width = parseInt( img.css('max-width') )/100 * $(window).width();
     // max is wider than image
     if( max_width/max_height > ratio ) {
       return max_height*ratio;
@@ -252,32 +256,40 @@ var lightbox = {
     var color = $this.css('background-color');
     var img_url = $this.attr('id');
 
-    image_loader($this, lightbox._get_image_width($this), function(img) { //wait for loaded image
+    var img = image_loader($this, lightbox.get_image_width($this));
+
+    //wait for loaded image
+    img.load(function() {
       var e = $(lightbox._e);
       //insert image
-      e.find('img').replaceWith( img );
+      e.find('img').replaceWith( $(this) );
 
       //load caption
-      e.find('.lightbox_caption').text( caption_span.text() ).css({'color': img.css('color') });
+      e.find('.lightbox_caption').text( caption_span.text() ).css({'color': $this.css('color') });
            // .append(caption_links.clone().css({'float':'none', 'display':'inline'}));
 
       //adjust color /and hide scrollbar
-      e.css({'background-color':color})
+      e.css({'background-color':color, 'top':0})
+      lightbox._restore.scrollTop = $(document).scrollTop();
       $('body, html').css({'overflow': 'hidden'});
+      $('#frame_container').css({'display': 'none'});
 
       //finish animation
-      e.trigger({type:'load_lightbox_end.pho', image:img});
+      e.trigger({type:'load_lightbox_end.pho', image:$this});
 
       //update hash
       hash( null, img_url );
-    });
+    })
 
     //start animation
     $(lightbox._e).trigger({type:'load_lightbox_start.pho', image:$this});
   },
   
   hide: function(e) {  
-    //?? $('body, html').css({'background-color': $('div.current').css('background-color'), 'overflow': ''});
+    $('body, html').css({'background-color': $('div.current').css('background-color'), 'overflow': ''});
+    $('#frame_container').css({'display': ''});
+    $(document).scrollTop(lightbox._restore.scrollTop);
+    $('#lightbox').css('top',lightbox._restore.scrollTop);
 
     $(lightbox._e).trigger('hide_lightbox.pho');
 
@@ -382,8 +394,8 @@ var navigate = {
       
       var new_frame = navigate['_'+to](current);
 
-      //set document background
-      //?? ('body, html').css({'background-color': current.next().css('background-color')});
+      //set document background (yes it's necessary!)
+      $('body, html').css({'background-color': new_frame.css('background-color')});
 
       //change "current" flag (css-class) to frame on the right and focus new frame
       current.removeClass('current');
@@ -482,6 +494,18 @@ var frame = {
     })(curr);
   },
 
+  // return width of image. image = div element
+  get_image_width: function(image) {
+    image = $(image);
+    var frame = image.parents('.frame');
+    var restore_z = frame.css('z-index');
+    var restore_disp = frame.css('display');
+    frame.css('z-index',-1).show();
+    var width = image.width();
+    frame.css({'z-index':restore_z, 'display':restore_disp});
+    return width;
+  },
+
   _init_viewer: function( frame_element ) {
     //copy background color 
     var color = frame_element.children('div.viewer').css('background-color');
@@ -496,20 +520,15 @@ var frame = {
       var img_url = img.attr('alt');
       if( !img_url ) { img_url = img.attr('id') }
       
-      image_loader(img, img.width(), function(img_element) {
-        img_element.hide();
-        img.prepend( img_element.fadeIn().css('display','') );
-        /*
-        var show = function() {
-          img.prepend( img_element.fadeIn().css('display','') ); //"display" should be block (defined in css) 
-        };
-        queue.put(show);
-        img_element.load(function() {
-          queue.ex(show);
-        })
-        */
-      });
+      var img_element = image_loader(img, frame.get_image_width(img)).hide();
 
+      var show = function() {
+        img.prepend( img_element.fadeIn().css('display','') ); //"display" should be block (defined in css) 
+      };
+      queue.put(show);
+      img_element.load(function() {
+        queue.ex(show);
+      })
       img.hover( caption.show, caption.hide );
       $('.caption').css({'opacity': config.CSS_CAPTION_OPACITY}) //works in IE
     });
