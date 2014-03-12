@@ -17,13 +17,20 @@ $(function() {
 
   // pulse image while lightbox is loading
   $('div#lightbox').on('load_lightbox_start.pho', function(e) {
-    e.image.pulse( function() { return !$('div#lightbox').is(':visible') } , 'slow');
+    //e.image.pulse( function() { return !$('div#lightbox').is(':visible') } , 'slow');
+    // highlight image and show loader on it
+    loader = $('<div class="loader">').hide();
+    e.image.fadeTo( 'slow', 0.6 )
+           .prepend(loader.fadeTo('slow', 0.6))
   });
   
   // show lightbox when it's loaded
   $('div#lightbox').on('load_lightbox_end.pho', function() {
     // stop pulse
-    $('.image').stop(true).css({'opacity':'1'});
+    //$('.image').stop(true).css({'opacity':'1'});
+    // make opaque remove loader
+    $('.image').stop(true).css({'opacity':'1'})
+        .find('.loader:first').remove();
    
     // try full screen
     var lb = $('div#lightbox').get(0);

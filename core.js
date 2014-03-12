@@ -50,24 +50,6 @@ function is_full_view() {
   return hash()[1] != undefined;
 }
 
-// get next higher available image size
-/*//--
-function ceil_viewport(dev_width) {
-  var width = false;
-  for(i in html.viewports) {
-    if( dev_width <= html.viewports[i] ) {
-      if(false === width || html.viewports[i] < width) {
-        width = html.viewports[i];
-      }
-    }
-  }
-  if(false === width) {
-    return Math.max.apply(this, html.viewports);
-  }
-  return width;
-}
-*/
-
 function image_loader(image, size) {
   image = $(image);
   // find next available image size

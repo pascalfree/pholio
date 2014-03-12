@@ -173,6 +173,22 @@ div.caption_top {
   }
 }
 
+/* ANIMATIONS */
+.loader {
+    position: absolute;
+    background-image: url('res/load.png');
+    width: 100%;
+    height: 100%;
+    background-position: center;
+    background-repeat: no-repeat;
+    animation: rotate 3s infinite linear;
+}
+
+@keyframes rotate{
+    from { transform: rotate(0) }
+    to { transform: rotate(360deg) }
+}
+
 /* NAVIGATION */
 
 div.navigator {

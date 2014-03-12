@@ -1,6 +1,6 @@
 # Pholio
 
-Pholio is a half-static template, that allows to design creative and individual photo galleries easily. Multiple Pictures can be arranged in frames using custom (static) html and css. Pholio then automatically adds life to the frames, making them interactive on desktop and on touch devices.
+Pholio is a semi-static template, that allows to design creative and individual photo galleries easily. Multiple Pictures can be arranged in frames using custom (static) html and css. Pholio then automatically adds life to the frames, making them interactive on desktop and on touch devices.
 
 ## Demo
   * [pholio.ihdg.ch](http://pholio.ihdg.ch/)
