@@ -5,6 +5,10 @@ Pholio is a semi-static template, that allows to design creative and individual 
 ## Demo
   * [pholio.ihdg.ch](http://pholio.ihdg.ch/)
 
+## Install
+
+see [install.md](install.md)
+
 ## Why
 While many online galleries are easy to set up and great to manage photo collections, they usually won't let the artist put up their pictures exactly how they want to. Customizing usually means, digging into a lot of code or writing some code from scratch.
 Pholio lets the artist decide how the pictures are presented in simple html and css, while adding all the interactions automatically.

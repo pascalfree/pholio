@@ -82,6 +82,7 @@ div.viewer {
 div.image {
   cursor: pointer;
   position: relative;
+  overflow: hidden; /*because of rotating loader*/
 }
 
 div.image img{

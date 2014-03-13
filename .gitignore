@@ -5,3 +5,4 @@ pages/*
 !pages/template.html
 !.gitignore
 *.xcf
+config.js
