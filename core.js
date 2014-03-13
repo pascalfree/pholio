@@ -9,16 +9,53 @@ html.viewports = [800,500]; // list of available scaled images
 
 //// UTILITY
 
-/*
-* hash( frame, image, user ): write parameters to hash (parameters are optional)
+/**
+* hash( frame, image, user, history = true ): write parameters to hash (parameters are optional)
+*   @param history: if set to false, the hash change will not affect the browsers history
 * hash(): get current hash as array
 * hash()[0]: frame number as integer, false if no frame number is defined
 * hash()[1]: image path as a string, undefined if not set
 */
-function hash( frame, image, user ) {
+function hash( frame, image, user, history ) {
+  // default values
+  history = history!==false ? true : false;
+
   // get value
   var h = window.location.hash.substr(1);
   h = h.split(',');
+  // normalize
+  hash._normalize(h);
+
+  // set new value
+  [ frame, image_norm, user ] = hash._normalize( [frame, image, user] ); //normalize
+  var changed = false;
+  if( $.type(frame) == 'string' || $.type(frame) == 'number' ) {
+    changed = h[0] != frame; // only detect actual change
+    h[0] = frame;
+  }
+  if( $.type(image) == 'string' ) { //check unnormalized image, because undefined is not a string
+    changed = changed || h[1] != image_norm;
+    h[1] = image_norm;
+  }
+  if( $.type(user) == 'string' ) {
+    changed = changed || h[1] != image;
+    h[2] = user;  
+  }
+  if( changed ) { 
+    if( history ) {
+      window.location.hash = h.join(','); 
+    } else {
+      //by: http://dev.enekoalonso.com/2008/12/29/modifying-the-url-hash-without-affecting-the-browser-history/
+      window.location.replace(window.location.href.split('#')[0] + '#' + h.join(','))
+    }
+  }
+
+  // get value
+  return h
+}
+
+// static method to normalize input and output
+hash._normalize = function(h) {
   h[0] = parseInt( h[0] );
   // remove ambiguities
   if( isNaN( h[0] ) ) {
@@ -27,22 +64,7 @@ function hash( frame, image, user ) {
   if( '' == h[1] ) { 
     h[1] = undefined; 
   }
-
-  // set new value
-  var changed = false;
-  if( $.type(frame) == 'string' || $.type(frame) == 'number' ) {
-    h[0] = frame; changed = true;
-  }
-  if( $.type(image) == 'string' ) {
-    h[1] = image; changed = true;    
-  }
-  if( $.type(user) == 'string' ) {
-    h[2] = user; changed = true;    
-  }
-  if( changed ) { window.location.hash = h.join(','); }
-
-  // get value
-  return h
+  return h;
 }
 
 // returns true if a single picture is viewed
@@ -166,7 +188,7 @@ function function_queue() {
 //initialize when loaded
 $(document).ready(function() {
   //initialize window location hash
-  if( hash()[0] === false ) { hash(config.DEFAULT_PAGE); }  
+  if( hash()[0] === false ) { hash(config.DEFAULT_PAGE, null, null, false); }  
   var h = hash();
 
   //initialize frames
