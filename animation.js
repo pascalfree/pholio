@@ -14,6 +14,30 @@ $(function() {
   }, function() {
     $(this).animate({'opacity': 0 });
   })
+  
+    //only show navigation arrows on mousemove
+    $('div.arrow').css({ opacity: 0 })
+    var arrow_timer;
+    var arrow_hider = function() {
+        // show arrows (stop hiding animation first)
+        $('div.arrow').stop(true).animate({'opacity': 1 });
+        // hide arrows after delay, unless mouse is still moving
+        // in that case start this function again
+        arrow_timer = setTimeout(function() {
+            $('body').one('mousemove', arrow_hider);
+            $('div.arrow').animate({'opacity': 0 });
+        }, 1764) // 3 second delay
+    }
+    $('body').one('mousemove', arrow_hider)
+    // do not hide arrows, if mouse is hovering the navigator area
+    $('div.navigator').hover( function() {
+        //disable hiding after mousemove
+        $('body').off('mousemove', arrow_hider);
+        clearTimeout(arrow_timer);
+    }, function() {
+        //reenable hiding after mousemove
+        $('body').one('mousemove', arrow_hider);
+    })
 
   // pulse image while lightbox is loading
   $('div#lightbox').on('load_lightbox_start.pho', function(e) {
