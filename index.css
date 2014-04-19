@@ -30,6 +30,7 @@ div#lightbox {
   text-align: center;
   overflow: auto;
   -webkit-overflow-scrolling: touch; /*for iOS*/
+  transition: background-color 0.5s ease-out;
 }
 
 div#lightbox img {
@@ -204,11 +205,11 @@ div.navigator {
   cursor: pointer;
 }
 
-div#navigator_left {
+div.n_left {
   left: 0;
 }
 
-div#navigator_right {
+div.n_right {
   right: 0;  /*adjusted in jquery*/
 }
 
@@ -219,12 +220,12 @@ div.arrow {
   width: 20px;
 }
 
-div#arrow_right {
+div.a_right {
   background-image: url('res/arrow_right.png');
   right: 10px; /*adjusted in jquery*/
 }
 
-div#arrow_left {
+div.a_left {
   background-image: url('res/arrow_left.png');
   left: 10px;
 }

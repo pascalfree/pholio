@@ -41,7 +41,6 @@ $(function() {
 
   // pulse image while lightbox is loading
   $('div#lightbox').on('load_lightbox_start.pho', function(e) {
-    //e.image.pulse( function() { return !$('div#lightbox').is(':visible') } , 'slow');
     // highlight image and show loader on it
     loader = $('<div class="loader">').hide();
     e.image.fadeTo( 'slow', 0.6 )
@@ -50,8 +49,6 @@ $(function() {
   
   // show lightbox when it's loaded
   $('div#lightbox').on('load_lightbox_end.pho', function() {
-    // stop pulse
-    //$('.image').stop(true).css({'opacity':'1'});
     // make opaque remove loader
     $('.image').stop(true).css({'opacity':'1'})
         .find('.loader:first').remove();
@@ -66,9 +63,36 @@ $(function() {
       lb.webkitRequestFullScreen();
     }
 
+    // unhide image
+    $('img#lightbox_img').show();
     // show lightbox
     $('div#lightbox').fadeIn( function() {
       $('#close').fadeIn();
+    });
+  });
+  
+    // transition when moving to next/prev image in lightbox
+    $('div#lightbox').on('move_lightbox_start.pho', function(e) {
+        // clone the old image into an overlay
+        var img = $(this).find('img#lightbox_img');
+        // cloning current image
+        new_img = img.clone();
+        img.after(
+            // force positioning above original image
+            new_img.css({'position':'absolute'})
+                 .addClass('ghost')
+                 .offset( img.offset() )
+        )
+        // remove attribute after insert (removing it before didn't work)
+        new_img.removeAttr('id');
+    });
+  
+  // transition to another image in the lightbox
+  $('div#lightbox').on('move_lightbox_end.pho', function(e) {
+    $('img#lightbox_img').fadeIn( 500 );
+    // fade out old image
+    $('img.ghost').fadeOut( 500 , function() {
+        this.remove();
     });
   });
   

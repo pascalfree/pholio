@@ -1,39 +1,45 @@
 <!DOCTYPE HTML>
 <html>
-  <head>
-    <title>Pholio</title>
-    <meta charset="utf-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1, minimum-scale=1">
-    <link rel="stylesheet" href="index.css" type="text/css">
-    <script src="http://code.jquery.com/jquery-1.11.0.min.js"></script>
-    <script src="lib/jquery.mobile-events.min.js"></script>
-    <script src="config.js"></script>
-    <script src="core.js"></script>
-    <script src="animation.js"></script>
-  </head>
+    <!-- HI SOURCE CODE READER. -->
+    <!-- This code is available on github (https://github.com/pascalfree/pholio) -->
+    <head>
+        <title>Pholio</title>
+        <meta charset="utf-8">
+        <meta name="viewport" content="width=device-width, initial-scale=1, minimum-scale=1">
+        <link rel="stylesheet" href="index.css" type="text/css">
+        <script src="http://code.jquery.com/jquery-1.11.0.min.js"></script>
+        <script src="lib/jquery.mobile-events.min.js"></script>
+        <script src="config.js"></script>
+        <script src="core.js"></script>
+        <script src="animation.js"></script>
+    </head>
 
-  <body>
+    <body>
 
-  <div id="frame_container">
-    <div class="frame" tabindex="-1"></div>
-    <div class="frame current" tabindex="-1"></div>
-    <div class="frame" tabindex="-1"></div>
-  </div>
+        <div id="frame_container">
+            <div class="frame" tabindex="-1"></div>
+            <div class="frame current" tabindex="-1"></div>
+            <div class="frame" tabindex="-1"></div>
+        </div>
 
-  <div class="arrow" id="arrow_left"></div>
-  <div class="arrow" id="arrow_right"></div>
-  <div class="navigator" id="navigator_left"></div>
-  <div class="navigator" id="navigator_right"></div>
+        <div class="arrow a_left" id="arrow_left"></div>
+        <div class="arrow a_right" id="arrow_right"></div>
+        <div class="navigator n_left" id="navigator_left"></div>
+        <div class="navigator n_right" id="navigator_right"></div>
 
-  <div id="lightbox">
-    <div id="close"></div>
-    <div class="lightbox_caption"></div>
-    <img></img>
-  </div>
+        <div id="lightbox">
+            <div class="arrow a_left" id="lightbox_arrow_left"></div>
+            <div class="arrow a_right" id="lightbox_arrow_right"></div>
+            <div class="navigator n_left" id="lightbox_navigator_left"></div>
+            <div class="navigator n_right" id="lightbox_navigator_right"></div>
+            <div id="close"></div>
+            <div class="lightbox_caption"></div>
+            <img id="lightbox_img"/>
+        </div>
 
-  <div id="touch_footer">
-    <div>&laquo; swipe &raquo;</div>
-  </div>
+        <div id="touch_footer">
+            <div>&laquo; swipe &raquo;</div>
+        </div>
 
-  </body>
+    </body>
 </html>

@@ -230,17 +230,34 @@ $(document).on('init.pho', function() {
           lightbox.hide();
       }
   });
+  
+  //init onhashchange
+  $(window).on('hashchange', lightbox.navigate.move_event('hash'));  
+  
+  //initialize lightbox navigation
+  $('div#lightbox_navigator_right').on($.getTapEvent(), lightbox.navigate.move_event('right'));
+  $('div#lightbox_navigator_left').on($.getTapEvent(), lightbox.navigate.move_event('left'));
+  
+  //initialize keyboard shortcuts
+  $('body').on('keydown', function(e) { 
+      if( 37 == e.keyCode ) { // left
+          lightbox.navigate.move('left');
+      } else if( 39 == e.keyCode ) { // right
+          lightbox.navigate.move('right');
+      }
+  });
 });
 
 var lightbox = {
   _e: 'div#lightbox',
   _visible: undefined,
   _restore: [],
+  _current_image: undefined, //html element (from frame) of currently displayed image
   
   //return width that image will have in lightbox (approx.)
   get_image_width: function(image) {
     var ratio = image.width()/image.height();
-    var img = $(lightbox._e).find('img');
+    var img = $(lightbox._e).find('img#lightbox_img');
     var max_height = parseInt( img.css('max-height') )/100 * $(window).height();
     var max_width = parseInt( img.css('max-width') )/100 * $(window).width();
     // max is wider than image
@@ -251,43 +268,143 @@ var lightbox = {
     }
   },
   
-  show: function(e) {
-    lightbox._visible = true;
-    //load info
-    var $this = $(this);
-    var caption_span = $this.find('.caption span');
-    var caption_links = $this.find('.caption a');
-    var color = $this.css('background-color');
-    var img_url = $this.attr('id');
+    _load: function(image, callback) {
+        /*# load image and read meta data from frame
+        @param image: html element from frame of image to be loaded
+        @param callback: callback function, will be called with:
+                callback(img, caption, ...)
+        */
+        image = $(image);
+        var img = image_loader(image, lightbox.get_image_width(image));
+        img.load(function() {
+            var e = $(lightbox._e);
 
-    var img = image_loader($this, lightbox.get_image_width($this));
+            //insert image
+            e.find('img#lightbox_img').replaceWith( $(this).attr('id','lightbox_img').hide() );
+            
+            //load caption
+            var text = image.find('.caption span').text();
+            if( text == '' ) {
+                // if there is no caption, give away space
+                var c = e.find('.lightbox_caption');
+                if( !lightbox._restore['lightbox_height'] ) {
+                    lightbox._restore['lightbox_height'] = c.css('height');
+                }
+                c.css({'height':'5%'}).text('');
+            } else {
+                // display captions
+                e.find('.lightbox_caption').height( lightbox._restore['lightbox_height'] )
+                    .text( text ).css({'color': image.css('color') });
+                lightbox._restore['lightbox_height'] = null;
+            }
+            
+            //adjust color
+            e.css({'background-color': image.css('background-color'), 'top':0})
+        
+            //update hash
+            hash( null, image.attr('id') );
+        
+            // tootle lightbox navigation (hide if no more images)
+            lightbox.navigate.toggle();
+        
+            callback($(this));
+        });
+        return img;
+    },
+  
+    show: function(e) {
+        lightbox._visible = true;
 
-    //wait for loaded image
-    img.load(function() {
-      var e = $(lightbox._e);
-      //insert image
-      e.find('img').replaceWith( $(this) );
+        var image = $(this);
+        lightbox._current_image = image; //store current image for later usage.
+        
+        lightbox._load(image, function() {  
+            //hide scrollbar
+            lightbox._restore.scrollTop = $(document).scrollTop();
+            $('body, html').css({'overflow': 'hidden'});
+            $('#frame_container').css({'display': 'none'});
+                   
+            //finish animation
+            $(lightbox._e).trigger({type:'load_lightbox_end.pho', image:image});
+        });
 
-      //load caption
-      e.find('.lightbox_caption').text( caption_span.text() ).css({'color': $this.css('color') });
-           // .append(caption_links.clone().css({'float':'none', 'display':'inline'}));
+        //start animation
+        $(lightbox._e).trigger({type:'load_lightbox_start.pho', image:image});
+    },
+  
+    navigate: {
+        //# navigation inside the lightbox
+        
+        toggle: function() {
+            //# show of hide navigation depending on if there is a previous/next image
+            $('div#lightbox_navigator_left, div#lightbox_arrow_left').toggle(  lightbox._current_image.prevAll('.image').length != 0 );
+            $('div#lightbox_navigator_right, div#lightbox_arrow_right').toggle( lightbox._current_image.nextAll('.image').length != 0  );
+        },
+        
+        move_event: function(to) {
+            return function(e) { 
+                e.stopPropagation()
+                return lightbox.navigate.move(to); 
+            }
+        },
+        
+        move: function(to) {
+            /*# display previous or next image 
+            @param to: 'left', 'right' or 'hash'. 
+                       'hash' will try to identify a left or right action from the location hash, and apply it.
+            */
+            //skip if lightbox is not visible
+            if( !is_full_view() ) {
+                return;
+            }
+            
+            // hash function (history back)
+            if( to == 'hash' ) {
+                var h = hash();
+                
+                //do nothing if image from hash matches displayed image (current)
+                if( h[1] == lightbox._current_image.attr('id') ) {
+                    return;
+                }
 
-      //adjust color /and hide scrollbar
-      e.css({'background-color':color, 'top':0})
-      lightbox._restore.scrollTop = $(document).scrollTop();
-      $('body, html').css({'overflow': 'hidden'});
-      $('#frame_container').css({'display': 'none'});
+                // move left or right depending on hash value
+                if( h[1] == lightbox._current_image.prevAll('.image').first().attr('id') ) {
+                    to = 'left';
+                } else if( h[1] == lightbox._current_image.nextAll('.image').first().attr('id') ) {
+                    to = 'right';
+                } else {
+                    location.reload();
+                    return;
+                }
+            }
 
-      //finish animation
-      e.trigger({type:'load_lightbox_end.pho', image:$this});
+            // get new image to be displayed            
+            var to_image; //init with empty jquery obj
+            if( to == 'left' ) {
+                to_image = lightbox._current_image.prevAll('.image').first();
+            } else if( 'right' ) {
+                to_image = lightbox._current_image.nextAll('.image').first();
+            }
+            
+            // this function should not be called, if no image exists at direction to move to
+            if( !to_image || to_image.length == 0 ) {
+                //throw "Warning: Tried to move to inexistant image in lightbox.navigate.";
+                //ignore
+                return;
+            }
+            
+            $(lightbox._e).trigger({type:'move_lightbox_start.pho'});
+            
+            // set new current image
+            lightbox._current_image = to_image;
+            
+            // start an event for the transition to the new image --> animation.js
+            img = lightbox._load(to_image, function(img) {
+                $(lightbox._e).trigger({type:'move_lightbox_end.pho', img:img});
+            });
+        }
 
-      //update hash
-      hash( null, img_url );
-    })
-
-    //start animation
-    $(lightbox._e).trigger({type:'load_lightbox_start.pho', image:$this});
-  },
+    },
   
   hide: function(e) {  
     $('body, html').css({'background-color': $('div.current').css('background-color'), 'overflow': ''});
