@@ -16,17 +16,19 @@ $(function() {
   })
   
     //only show navigation arrows on mousemove
-    $('div.arrow').css({ opacity: 0 })
+    // do the same for the close icon in the lightbox
+    var autohidden = $('div.arrow, #close');
+    autohidden.css({ opacity: 0 })
     var arrow_timer;
     var arrow_hider = function() {
         // show arrows (stop hiding animation first)
-        $('div.arrow').stop(true).animate({'opacity': 1 });
+        autohidden.stop(true).animate({'opacity': 1 });
         // hide arrows after delay, unless mouse is still moving
         // in that case start this function again
         arrow_timer = setTimeout(function() {
             $('body').one('mousemove', arrow_hider);
-            $('div.arrow').animate({'opacity': 0 });
-        }, 1764) // 3 second delay
+            autohidden.animate({'opacity': 0 });
+        }, 1764) // 1.764 second delay (why not?)
     }
     $('body').one('mousemove', arrow_hider)
     // do not hide arrows, if mouse is hovering the navigator area
@@ -73,8 +75,14 @@ $(function() {
   
     // transition when moving to next/prev image in lightbox
     $('div#lightbox').on('move_lightbox_start.pho', function(e) {
-        // clone the old image into an overlay
+        // the old image
         var img = $(this).find('img#lightbox_img');
+    
+        //show loader
+        loader = $('<div class="loader_container"><div class="loader"></div>').hide();
+        img.after( loader.fadeTo('slow', 0.6) );
+        
+        // create ghost overlay
         // cloning current image
         new_img = img.clone();
         img.after(
@@ -87,14 +95,15 @@ $(function() {
         new_img.removeAttr('id');
     });
   
-  // transition to another image in the lightbox
-  $('div#lightbox').on('move_lightbox_end.pho', function(e) {
-    $('img#lightbox_img').fadeIn( 500 );
-    // fade out old image
-    $('img.ghost').fadeOut( 500 , function() {
-        this.remove();
+    // transition to another image in the lightbox
+    $('div#lightbox').on('move_lightbox_end.pho', function(e) {
+        var delay = 300; 
+        $('img#lightbox_img').fadeIn( delay );
+        // fade out old image
+        $('img.ghost, .loader_container').stop(true).fadeOut( delay , function() {
+            this.remove();
+        });
     });
-  });
   
   // hide lightbox
   $('div#lightbox').on('hide_lightbox.pho', function() {

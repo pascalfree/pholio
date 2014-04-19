@@ -405,16 +405,16 @@ var lightbox = {
                 return;
             }
             
-            $(lightbox._e).trigger({type:'move_lightbox_start.pho'});
+            $(lightbox._e).trigger({type:'move_lightbox_start.pho', to:to});
             
             // set new current image
             lightbox._current_image = to_image;
             
             // start an event for the transition to the new image --> animation.js
             img = lightbox._load(to_image, function(img) {
-                $(lightbox._e).trigger({type:'move_lightbox_end.pho', img:img});
+                $(lightbox._e).trigger({type:'move_lightbox_end.pho', img:img, to:to});
             });
-        }
+        },
 
     },
   
