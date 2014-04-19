@@ -27,7 +27,10 @@ function hash( frame, image, user, history ) {
   hash._normalize(h);
 
   // set new value
-  [ frame, image_norm, user ] = hash._normalize( [frame, image, user] ); //normalize
+  // [ frame, image_norm, user ] = hash._normalize( [frame, image, user] ); //normalize //fix: this is not yet implemented in chrome
+  fiu = hash._normalize( [frame, image, user] );
+  frame = fiu[0]; image_norm = fiu[1]; user = fiu[2];
+  
   var changed = false;
   if( $.type(frame) == 'string' || $.type(frame) == 'number' ) {
     changed = h[0] != frame; // only detect actual change

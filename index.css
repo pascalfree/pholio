@@ -194,11 +194,25 @@ div.caption_top {
     background-position: center;
     background-repeat: no-repeat;
     animation: rotate 3s infinite linear;
+    -webkit-animation: rotate 3s infinite linear; /*webkit compat*/
 }
 
 @keyframes rotate{
-    from { transform: rotate(0) }
-    to { transform: rotate(360deg) }
+    from { 
+        transform: rotate(0);
+    }
+    to { 
+        transform: rotate(360deg);
+    }
+}
+
+@-webkit-keyframes rotate{ /*webkit compat*/
+    from { 
+        -webkit-transform: rotate(0);
+    }
+    to { 
+        -webkit-transform: rotate(360deg);
+    }
 }
 
 /* NAVIGATION */
