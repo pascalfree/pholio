@@ -106,8 +106,8 @@ function image_loader(image, size) {
   }
   
   var size_iterator = 0;
-  var img = $('<img>');
   var img_url = image.attr('id');
+  var img = $('<img alt="'+ img_url +'">');
 
   var next_name = function() {
     //tried everything nothing worked
@@ -374,8 +374,8 @@ var lightbox = {
             if( to == 'hash' ) {
                 var h = hash();
                 
-                //do nothing if image from hash matches displayed image (current)
-                if( h[1] == lightbox._current_image.attr('id') ) {
+                //do nothing if lightbox is not visible, or image from hash matches displayed image (current)
+                if( !lightbox._visible || h[1] == lightbox._current_image.attr('id') ) {
                     return;
                 }
 
@@ -437,8 +437,11 @@ var lightbox = {
   toggle: function(e) {
     // show/hide lightbox
     var image = $(this);
-    if( !image.length && lightbox._visible ) { lightbox.hide(); }
-    else if( !lightbox._visible ){ lightbox.show.apply(image); }
+    if( !image.length && lightbox._visible ) {
+        lightbox.hide();
+    } else{ //fix: only show lightbox if image is set (length > 0)
+        lightbox.show.apply(image);
+    }
   }
 }
 
