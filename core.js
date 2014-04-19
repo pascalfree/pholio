@@ -249,24 +249,36 @@ $(document).on('init.pho', function() {
 });
 
 var lightbox = {
-  _e: 'div#lightbox',
-  _visible: undefined,
-  _restore: [],
-  _current_image: undefined, //html element (from frame) of currently displayed image
+    _e: 'div#lightbox',
+    _visible: undefined,
+    _restore: [],
+    _current_image: undefined, //html element (from frame) of currently displayed image
   
-  //return width that image will have in lightbox (approx.)
-  get_image_width: function(image) {
-    var ratio = image.width()/image.height();
-    var img = $(lightbox._e).find('img#lightbox_img');
-    var max_height = parseInt( img.css('max-height') )/100 * $(window).height();
-    var max_width = parseInt( img.css('max-width') )/100 * $(window).width();
-    // max is wider than image
-    if( max_width/max_height > ratio ) {
-      return max_height*ratio;
-    } else { // max is narrower than image
-      return max_width;
-    }
-  },
+    _extract_css_size: function(string, abs_size) {
+        // detect: % or px value
+        if( string.substr(-1) == '%' ) {
+            return parseInt(string)/100 * abs_size;
+        }
+        return parseInt(string)
+    },
+  
+    //return width that image will have in lightbox (approx.)
+    get_image_width: function(image) {
+        //read the ratio from the data field, if not set, try to calculate.
+        var ratio = image.find('img').data('ratio');
+        ratio = ratio || image.width()/image.height()
+        
+        var img = $(lightbox._e).find('img#lightbox_img');
+        // detect: % or px value
+        var max_height = lightbox._extract_css_size( img.css('max-height'), $(window).height() );
+        var max_width = lightbox._extract_css_size( img.css('max-width'), $(window).width() );
+        // max is wider than image
+        if( max_width/max_height > ratio ) {
+            return max_height*ratio;
+        } else { // max is narrower than image
+            return max_width;
+        }
+    },
   
     _load: function(image, callback) {
         /*# load image and read meta data from frame
@@ -648,6 +660,9 @@ var frame = {
       };
       queue.put(show);
       img_element.load(function() {
+        // store the image ratio in the element
+        $(this).data('ratio', this.width/this.height);
+        
         queue.ex(show);
       })
       img.hover( caption.show, caption.hide );
