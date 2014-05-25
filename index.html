@@ -9,6 +9,7 @@
         <link rel="stylesheet" href="index.css" type="text/css">
         <script src="http://code.jquery.com/jquery-1.11.0.min.js"></script>
         <script src="lib/jquery.mobile-events.min.js"></script>
+        <script src="lib/tram-min.js"></script>
         <script src="config.js"></script>
         <script src="core.js"></script>
         <script src="animation.js"></script>
@@ -28,13 +29,14 @@
         <div class="navigator n_right" id="navigator_right"></div>
 
         <div id="lightbox">
+            <div class="lightbox_caption"></div>
+            <img id="lightbox_img" alt="dummy"/>
+            
             <div class="arrow a_left" id="lightbox_arrow_left"></div>
             <div class="arrow a_right" id="lightbox_arrow_right"></div>
             <div class="navigator n_left" id="lightbox_navigator_left"></div>
             <div class="navigator n_right" id="lightbox_navigator_right"></div>
             <div id="close"></div>
-            <div class="lightbox_caption"></div>
-            <img id="lightbox_img" alt="dummy"/>
         </div>
 
         <div id="touch_footer">

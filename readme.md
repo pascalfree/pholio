@@ -40,3 +40,7 @@ A pholio website consists of one or more Frames. Each frame is a html snippet co
   * define necessary structure of frames
   * separate core from animations: content changes and control in core, visual changes in animations, rename animations to visual
   * full screen mode (STRG+F)?
+  
+## Thanks
+  * jQuery Mobile Events - https://github.com/benmajor/jQuery-Mobile-Events
+  * tram.js - https://github.com/BKWLD/tram

@@ -19,6 +19,7 @@ html, body, #frame_container {
 /* LIGHTBOX */  
 
 div#lightbox {
+  display: none;
   position: absolute; /*more reliable on mobile*/
   top: 0;
   left: 0;
@@ -30,7 +31,6 @@ div#lightbox {
   text-align: center;
   overflow: auto;
   -webkit-overflow-scrolling: touch; /*for iOS*/
-  transition: background-color 0.5s ease-out;
 }
 
 div#lightbox img {
@@ -114,8 +114,7 @@ div.caption {
   padding: 10px 5%;
   background-color: black;
   color: white;
-  opacity: .5; /*adjust in jquery*/
-  display: none;
+  opacity: 0;
 }
 
 div.caption_left {
@@ -255,14 +254,13 @@ div.a_left {
 }
 
 div#close {
-  display: none;
   position: fixed;
   top:20px;
   right:20px;
   height: 31px;
   width: 31px;  
   background-image: url('res/x.png');
-  opacity: .5;
+  opacity: 0;
   cursor: pointer;
 }
 
@@ -277,7 +275,7 @@ div#close {
 
 #touch_footer {
   display: none;
-  position: absolute;
+  position: fixed;
   bottom: 0;
   right: 0;
   left: 0;
