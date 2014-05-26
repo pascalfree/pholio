@@ -142,6 +142,19 @@ $(function() {
     $('body').on('hide_caption.pho', '.image', function() {
         $(this).find('.caption').tram().start({'opacity':0});
     });
+    
+    // start loading an image
+    $('body').on('load_image_start.pho', '.image', function() {
+        // add a flat loader to the loading image, but only show first loader in page
+        $(this).append($('<div class="flat_loader"></div>').hide());
+        $('.flat_loader').first().show();
+    });
+
+    // finished loading the image
+    $('body').on('load_image_end.pho', '.image', function() {
+        $(this).find('.flat_loader').remove();
+        $('.flat_loader').first().show(); //show next loader
+    });
 
     // set scrollTop animation
     var html_body = $('body, html'); //body for chrome, html for firefox

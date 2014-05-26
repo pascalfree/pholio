@@ -214,6 +214,35 @@ div.caption_top {
     }
 }
 
+.flat_loader {
+    background-image: url('res/flat_load.png');
+    width: 100%;
+    height: 5px;
+    background-size: 600px;
+    background-repeat: repeat;
+    animation: slide 2s infinite linear;
+    -webkit-animation: slide 2s infinite linear; /*webkit compat*/
+    opacity: 0.5;
+}
+
+@keyframes slide{
+    from { 
+        background-position: 0 0;
+    }
+    to { 
+        background-position: 600px 0;
+    }
+}
+
+@-webkit-keyframes slide{ /*webkit compat*/
+    from { 
+        background-position: 0 0;
+    }
+    to { 
+        background-position: 600px 0;
+    }
+}
+
 /* NAVIGATION */
 
 div.navigator {

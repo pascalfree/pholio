@@ -694,9 +694,11 @@ var frame = {
       var img_url = img.attr('alt');
       if( !img_url ) { img_url = img.attr('id') }
 
+      img.trigger('load_image_start.pho');
       var img_element = image_loader(img, frame.get_image_width(img)).hide();
 
       var show = function() {
+        img.trigger('load_image_end.pho');
         img.prepend( img_element.fadeIn().css('display','') ); //"display" should be block (defined in css)
       };
       queue.put(show);
