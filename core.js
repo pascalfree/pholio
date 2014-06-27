@@ -73,8 +73,21 @@ function is_full_view() {
   return hash()[1] != undefined;
 }
 
-function image_loader(image, size) {
+/**
+ *  image_loader: loads the smallest available image larger or equal to the given size
+ *  @param image: an image container element //TODO: document these
+ *  @param size: minimum size of the image to be loaded
+ *  @param current (optional): img element that will be replaced. New image will not be loaded, if it is the same.
+ *  @return: an img element on success and false, if no image was found (or is the same as the current image)
+ */
+function image_loader(image, size, current) {
   image = $(image);
+
+  // only load new images, larger than previously loaded images.
+  // The large image is cached
+  loaded_size = image.data('loaded_size') || 0;
+  size = size > loaded_size? size : loaded_size;
+
   // find next available image size
   // look in image div
   var sizes = image.data('size') || [];
@@ -87,10 +100,14 @@ function image_loader(image, size) {
   if( g_sizes = config.IMAGE_SIZES.slice(0) ) { //slice to copy
     $.merge(sizes, g_sizes);
   }
-  var size;
+
+  //get maximum size available
+  var max_size = Math.max.apply(Math, sizes);
+
+  var available_size;
   // false if no sizes found:
   if( 0 == sizes.length ) {
-    size = false;
+    available_size = false;
   } else {
     // remove values < size
     if( size ) {
@@ -103,7 +120,7 @@ function image_loader(image, size) {
         }
       }
     }
-    size = sizes.sort();
+    available_size = sizes.sort();
   }
 
   var size_iterator = 0;
@@ -111,28 +128,39 @@ function image_loader(image, size) {
   var img_ext = image.data('ext');
   var img = $('<img alt="'+ img_url +'">');
 
+  // abort, if the current img is the same as the new image.
+  if( current && current.attr('src') == img_url + '_' + available_size[0] + img_ext ) {
+    return false;
+  }
+
   var next_name = function() {
     //tried everything nothing worked
     if(-1 == size_iterator) {
       return false;
     }
     // try largest file
-    if(!size || size_iterator >= size.length) {
+    if(!available_size || size_iterator >= available_size.length) {
       size_iterator = -1;
       return img_url + img_ext;
     } else { // try next size
-      return img_url + '_' + size[size_iterator++] + img_ext;
+      return img_url + '_' + available_size[size_iterator++] + img_ext;
     }
   }
 
   // try to load next bigger image, if size is not available
   // because the load event is called on an image if the src attribute is changed inside the error event handler (and the error event isn't anymore), the next img is loaded on a new img element, until it loads successfully. Then the src is copied to the real image.
 
-  //image loaded (really). apply src to real src.
-  var apply_src = function() {
-    $(this).off('error');
-    img.attr('src', $(this).attr('src') );
-  }
+    //image loaded (really). apply src to real src.
+    var apply_src = function() {
+        $(this).off('error');
+        img.attr('src', $(this).attr('src') );
+        // store size of successfully loaded image
+        if( size_iterator == -1 ) {
+            image.data('loaded_size', max_size+1);
+        } else {
+            image.data('loaded_size', available_size[size_iterator-1]);
+        }
+    }
 
   var retry = function() {
     var n = next_name();
@@ -187,6 +215,46 @@ function function_queue() {
   }
 }
 
+/*
+* show_in_background will make an invisible object visible in the background, such that it's size can be determined
+*/
+function show_in_background( element ) {
+    // variables to store original properties of elements
+    var was_hidden = false;;
+    var restore_zindex;
+    var restore_display;
+    element = $(element);
+    var parent = false;
+
+    this.show = function() {
+        // save properties
+        restore_display = element.css('display');
+        if( !element.is(':visible') ) {
+            was_hidden = true;
+            restore_zindex = element.css('zindex');
+            // make visible (in background)
+            element.css({ 'zindex' : '-1' }).show();
+        }
+        // do the same for the parent element (recursive)
+        var parent_element = element.parent();
+        if( parent_element[0] != document ) {
+            parent = new show_in_background( parent_element );
+            parent.show();
+        }
+    }
+
+    this.restore = function() {
+        // restore element
+        if( was_hidden ) {
+            element.css({ 'zindex' : restore_zindex, 'display' : restore_display});
+        }
+        // restore parent;
+        if( parent ) {
+            parent.restore();
+        }
+    }
+}
+
 //// INITIALIZATION
 
 //initialize when loaded
@@ -207,7 +275,13 @@ $(document).ready(function() {
 
   //initialize body and html background color
   //(otherwise some bad color is visible when moving to the side and scrolling up to a frame with less height)
-  $('body, html').css({'background-color': $('div.current').css('background-color') });
+  $('body, html').css({'background-color': $('div.current').css('background-color') }); //TODO: div.current may not be unique (depending on user-defined html)
+
+  //reload images if window is resized
+  $(window).on("debouncedresize", function(e) {
+    lightbox.reload_image();
+    frame.reload_images();
+  });
 });
 
 //// CAPTION
@@ -302,8 +376,8 @@ var lightbox = {
         @param callback: callback function, will be called with:
                 callback(img, caption, ...)
         */
-        image = $(image);
-        var img = image_loader(image, lightbox.get_image_width(image));
+        var image = $(image);
+        var img = image_loader(image, lightbox.get_image_width(image), $(lightbox._e + ' img#lightbox_img'));
         img.load(function() {
             var e = $(lightbox._e);
 
@@ -340,6 +414,17 @@ var lightbox = {
         return img;
     },
 
+    reload_image: function() {
+        // only if lightbox is visible or showing.
+        if( lightbox._state == 1 || lightbox._state == 2 ) {
+            // reload currently displayed image (probably in higher resolution)
+            var img = image_loader(lightbox._current_image, lightbox.get_image_width(lightbox._current_image));
+            img.load(function() {
+                $(lightbox._e).find('img#lightbox_img').replaceWith( $(this).attr('id','lightbox_img') );
+            });
+        }
+    },
+
     show: function(e) {
         //ignore, if lightbox is not 'invisible' or 'hiding'
         if( lightbox._state != 0 && lightbox._state != 3 ) {
@@ -360,7 +445,7 @@ var lightbox = {
             lightbox._restore.scrollTop = $(document).scrollTop();
             $('body, html').css({'overflow': 'hidden'});
             $('#frame_container').css({'display': 'none'});
-     
+
             //finish animation
             $(lightbox._e).trigger({type:'load_lightbox_end.pho', image:image});
             lightbox._state = 2; //visible
@@ -400,7 +485,7 @@ var lightbox = {
             // hash function (history back)
             if( to == 'hash' ) {
                 var h = hash();
-  
+
                 //do nothing if lightbox is not visible, or image from hash matches displayed image (current)
                 if( lightbox._state!=2 || h[1] == lightbox._current_image.attr('id') ) {
                     return;
@@ -436,7 +521,7 @@ var lightbox = {
 
             // set new current image
             lightbox._current_image = to_image;
-    
+
             // start an event for the transition to the new image --> animation.js
             img = lightbox._load(to_image, function(img) {
                 $(lightbox._e).trigger({type:'move_lightbox_end.pho', image:to_image, img:img, to:to});
@@ -669,17 +754,14 @@ var frame = {
     })(curr);
   },
 
-  // return width of image. image = div element
-  get_image_width: function(image) {
-    image = $(image);
-    var frame = image.parents('.frame');
-    var restore_z = frame.css('z-index');
-    var restore_disp = frame.css('display');
-    frame.css('z-index',-1).show();
-    var width = image.width();
-    frame.css({'z-index':restore_z, 'display':restore_disp});
-    return width;
-  },
+    // return width of image. image = div element
+    get_image_width: function(image) {
+        var e = new show_in_background(image);
+        e.show();
+        var width = image.width();
+        e.restore();
+        return width;
+    },
 
   _init_viewer: function( frame_element ) {
     //copy background color
@@ -717,5 +799,21 @@ var frame = {
 
     //enable external links
     frame_element.find('[class^=ref_]').attr('target','_blank');
-  }
+  },
+
+    reload_images: function() {
+        //reload images (maybe with higher resolution)
+        // priority on current frame
+        var images = $('div.current').find('.image');
+        images = $.merge(images, $('div.frame:not(div.current)').find('.image'));
+
+        images.each( function() {
+            var img = $(this);
+            // Do not load smaller images if larger is loaded.
+            var img_element = image_loader(img, frame.get_image_width(img), img.find('img'));
+            img_element.load(function() {
+                img.find('img').replaceWith( $(this).css('display','').data('ratio', this.width/this.height) );
+            });
+        });
+    }
 }
