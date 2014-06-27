@@ -34,13 +34,14 @@ A pholio website consists of one or more Frames. Each frame is a html snippet co
   * adjust caption font-size for small screens [done]
   * sometimes tries to load undefined_800 (if screen small)
   * click and side move in lightbox results in swipe event
-  * if lightbox doesn't load for 2 seconds, show it with loading icon
-  * only show navigation if mouse is moving
+  * only show navigation if mouse is moving [done]
   * create namespaces: Core, Frames, Navigator, Lighbox, Caption [progress]
   * define necessary structure of frames
   * separate core from animations: content changes and control in core, visual changes in animations, rename animations to visual
   * full screen mode (STRG+F)?
   
 ## Thanks
+  * jQuery - http://jquery.com/
   * jQuery Mobile Events - https://github.com/benmajor/jQuery-Mobile-Events
+  * Debounced and Throttled Resize Events for jQuery - https://github.com/louisremi/jquery-smartresize
   * tram.js - https://github.com/BKWLD/tram
