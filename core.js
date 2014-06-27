@@ -4,8 +4,6 @@ html = {};
 html.touch = false;
 html.frame_element = '<div class="frame" tabindex="-1"></div>';
 html.max_page = -1;
-html.viewports = [800,500]; // list of available scaled images
-
 
 //// UTILITY
 
@@ -86,7 +84,7 @@ function image_loader(image, size) {
     $.merge(sizes, v_sizes.slice(0))
   }
   // use global sizes
-  if( g_sizes = html.viewports.slice(0) ) { //slice to copy
+  if( g_sizes = config.IMAGE_SIZES.slice(0) ) { //slice to copy
     $.merge(sizes, g_sizes);
   }
   var size;
@@ -119,8 +117,8 @@ function image_loader(image, size) {
     }
     // try largest file
     if(!size || size_iterator >= size.length) {
-      return img_url;
       size_iterator = -1;
+      return img_url;
     } else { // try next size
       return img_url + '_' + size[size_iterator++];
     }
@@ -141,6 +139,8 @@ function image_loader(image, size) {
     if( n ) {
       proxy_img = $('<img>').on('error',retry);
       proxy_img.on('load', apply_src).attr('src', config.PAGE_FOLDER+'/'+n);
+    } else {
+      $('<img>').off('error',retry);
     }
   }
   retry();
