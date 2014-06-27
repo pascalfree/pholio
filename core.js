@@ -108,6 +108,7 @@ function image_loader(image, size) {
 
   var size_iterator = 0;
   var img_url = image.attr('id');
+  var img_ext = image.data('ext');
   var img = $('<img alt="'+ img_url +'">');
 
   var next_name = function() {
@@ -118,9 +119,9 @@ function image_loader(image, size) {
     // try largest file
     if(!size || size_iterator >= size.length) {
       size_iterator = -1;
-      return img_url;
+      return img_url + img_ext;
     } else { // try next size
-      return img_url + '_' + size[size_iterator++];
+      return img_url + '_' + size[size_iterator++] + img_ext;
     }
   }
 
