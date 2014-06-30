@@ -18,29 +18,30 @@
 
     <body>
 
-        <div id="frame_container">
-            <div class="frame" tabindex="-1"></div>
-            <div class="frame current" tabindex="-1"></div>
-            <div class="frame" tabindex="-1"></div>
+        <div id="pho-frame_container">
+            <div class="pho-frame" tabindex="-1"></div>
+            <div class="pho-frame pho-current" tabindex="-1"></div>
+            <div class="pho-frame" tabindex="-1"></div>
         </div>
 
-        <div class="arrow a_left" id="arrow_left"></div>
-        <div class="arrow a_right" id="arrow_right"></div>
-        <div class="navigator n_left" id="navigator_left"></div>
-        <div class="navigator n_right" id="navigator_right"></div>
+        <div class="pho-arrow pho-a_left" id="pho-navigation_arrow_left"></div>
+        <div class="pho-arrow pho-a_right" id="pho-navigation_arrow_right"></div>
+        <div class="pho-navigation pho-n_left" id="pho-navigation_left"></div>
+        <div class="pho-navigation pho-n_right" id="pho-navigation_right"></div>
 
-        <div id="lightbox">
-            <div class="lightbox_caption"></div>
-            <img id="lightbox_img" alt="dummy"/>
-            
-            <div class="arrow a_left" id="lightbox_arrow_left"></div>
-            <div class="arrow a_right" id="lightbox_arrow_right"></div>
-            <div class="navigator n_left" id="lightbox_navigator_left"></div>
-            <div class="navigator n_right" id="lightbox_navigator_right"></div>
-            <div id="close"></div>
+        <div id="pho-lightbox">
+            <div id="pho-lightbox_caption"></div>
+            <img id="pho-lightbox_img" alt="dummy"/>
+
+            <div class="pho-arrow pho-a_left" id="pho-lightbox_navigation_arrow_left"></div>
+            <div class="pho-arrow pho-a_right" id="pho-lightbox_navigation_arrow_right"></div>
+            <div class="pho-navigation pho-n_left" id="pho-lightbox_navigation_left"></div>
+            <div class="pho-navigation pho-n_right" id="pho-lightbox_navigation_right"></div>
+
+            <div id="pho-lightbox_close"></div>
         </div>
 
-        <div id="touch_footer">
+        <div id="pho-touch_footer">
             <div>&laquo; swipe &raquo;</div>
         </div>
 

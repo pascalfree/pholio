@@ -1,4 +1,4 @@
-html, body, #frame_container {
+html, body, #pho-frame_container {
   width: 100%;
   /*height: 100%;*/
   padding: 0;
@@ -12,13 +12,13 @@ html, body, #frame_container {
   webkit-tap-highlight-color: rgba(0,0,0,0);
 }
 
-.frame:focus {
+.pho-frame:focus {
     outline: none;
 }
 
-/* LIGHTBOX */  
+/* LIGHTBOX */
 
-div#lightbox {
+div#pho-lightbox {
   display: none;
   position: absolute; /*more reliable on mobile*/
   top: 0;
@@ -33,14 +33,15 @@ div#lightbox {
   -webkit-overflow-scrolling: touch; /*for iOS*/
 }
 
-div#lightbox img {
+/*not img#pho-lightbox_img because during transition there are multiple img in the lightbox (ghost)*/
+div#pho-lightbox img {
   margin: 0 auto;
   max-width: 96%;
   max-height: 88%;
   display: block;
 }
 
-div#lightbox .lightbox_caption{
+div#pho-lightbox_caption{
   margin-top: 0;
   font-size: 16pt;
   font-family: verdana, arial, sans;
@@ -49,22 +50,22 @@ div#lightbox .lightbox_caption{
 }
 
 @media (max-width: 630px), (max-height: 500px) {
-  div#lightbox .lightbox_caption{
+  div#pho-lightbox_caption{
     display: none;
   }
-  div#lightbox img {
+  div#pho-lightbox img {
     margin: auto;
     max-width: 100%;
     max-height: 100%;
   }
-  div#close {
+  div#pho-lightbox_close {
     display: none !important;
   }
 }
 
 /* VIEWER */
 
-div.frame {
+div.pho-frame {
   position: absolute;
   top: 0;
   min-height: 100%;
@@ -118,7 +119,7 @@ div.caption {
 }
 
 div.caption_left {
-  text-align: left;  
+  text-align: left;
 }
 
 div.caption span {
@@ -127,7 +128,7 @@ div.caption span {
 }
 
 div.caption_left span {
-  left: 10px; 
+  left: 10px;
   right: auto;
 }
 
@@ -197,19 +198,19 @@ div.caption_top {
 }
 
 @keyframes rotate{
-    from { 
+    from {
         transform: rotate(0);
     }
-    to { 
+    to {
         transform: rotate(360deg);
     }
 }
 
 @-webkit-keyframes rotate{ /*webkit compat*/
-    from { 
+    from {
         -webkit-transform: rotate(0);
     }
-    to { 
+    to {
         -webkit-transform: rotate(360deg);
     }
 }
@@ -226,26 +227,26 @@ div.caption_top {
 }
 
 @keyframes slide{
-    from { 
+    from {
         background-position: 0 0;
     }
-    to { 
+    to {
         background-position: 600px 0;
     }
 }
 
 @-webkit-keyframes slide{ /*webkit compat*/
-    from { 
+    from {
         background-position: 0 0;
     }
-    to { 
+    to {
         background-position: 600px 0;
     }
 }
 
 /* NAVIGATION */
 
-div.navigator {
+div.pho-navigation {
   position: fixed;
   top: 0;
   height: 100%;
@@ -257,37 +258,37 @@ div.navigator {
   cursor: pointer;
 }
 
-div.n_left {
+div.pho-n_left {
   left: 0;
 }
 
-div.n_right {
+div.pho-n_right {
   right: 0;  /*adjusted in jquery*/
 }
 
-div.arrow {
+div.pho-arrow {
   position: fixed;
   top:48%;
   height: 31px;
   width: 20px;
 }
 
-div.a_right {
+div.pho-a_right {
   background-image: url('res/arrow_right.png');
   right: 10px; /*adjusted in jquery*/
 }
 
-div.a_left {
+div.pho-a_left {
   background-image: url('res/arrow_left.png');
   left: 10px;
 }
 
-div#close {
+div#pho-lightbox_close {
   position: fixed;
   top:20px;
   right:20px;
   height: 31px;
-  width: 31px;  
+  width: 31px;
   background-image: url('res/x.png');
   opacity: 0;
   cursor: pointer;
@@ -317,21 +318,21 @@ div#close {
 }
 
 /* Fullscreen */
-:full-screen #frame_container, {
+:full-screen #pho-frame_container, {
   position: absolute;
   top: 0;
   left: 0;
   height: 100%;
 }
 
-:-webkit-full-screen #frame_container {
+:-webkit-full-screen #pho-frame_container {
   position: absolute;
   top: 0;
   left: 0;
   height: 100%;
 }
 
-:-moz-full-screen #frame_container {
+:-moz-full-screen #pho-frame_container {
   position: absolute;
   top: 0;
   left: 0;

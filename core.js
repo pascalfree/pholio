@@ -2,7 +2,6 @@
 //global vars
 html = {};
 html.touch = false;
-html.frame_element = '<div class="frame" tabindex="-1"></div>';
 html.max_page = -1;
 
 //// UTILITY
@@ -264,18 +263,10 @@ $(document).ready(function() {
   var h = hash();
 
   //initialize frames
-  if( h[0]>0 ) {
-    frame.create( $('.frame:first').attr('id','page'+(h[0]-1)).css({'left':'-100%'}).hide());
-  }
-  frame.create( $('.frame:eq(1)').attr('id','page'+h[0]).css({'left':'0'}).focus() ); //first visible frame
-  frame.create( $('.frame:eq(2)').attr('id','page'+(h[0]+1)).css({'left':'100%'}).hide());
+  frame.init_container( h[0] );
 
   //trigger init event
   $(document).trigger('init.pho')
-
-  //initialize body and html background color
-  //(otherwise some bad color is visible when moving to the side and scrolling up to a frame with less height)
-  $('body, html').css({'background-color': $('div.current').css('background-color') }); //TODO: div.current may not be unique (depending on user-defined html)
 
   //reload images if window is resized
   $(window).on("debouncedresize", function(e) {
@@ -300,7 +291,7 @@ var caption = {
 
 //initialize lightbox
 $(document).on('init.pho', function() {
-  $('div#lightbox').css({'opacity':'1'}).hide().on($.getTapEvent(), lightbox.hide);
+  lightbox.init_events();
 
    //initialize keyboard shortcuts
   $('body').on('keydown', function(e) {
@@ -311,14 +302,6 @@ $(document).on('init.pho', function() {
 
   //init onhashchange
   $(window).on('hashchange', lightbox.navigate.move_event('hash'));
-
-  //initialize lightbox navigation
-  $('div#lightbox_navigator_right').on($.getTapEvent(), lightbox.navigate.move_event('right'));
-  $('div#lightbox_navigator_left').on($.getTapEvent(), lightbox.navigate.move_event('left'));
-
-  //initialize swipe gesture in lightbox
-  $('div#lightbox').on('swipeleft', lightbox.navigate.move_event('right'))
-                   .on('swiperight', lightbox.navigate.move_event('left'));
 
   //initialize keyboard shortcuts
   $('body').on('keydown', function(e) {
@@ -339,10 +322,47 @@ $(document).on('init.pho', function() {
 });
 
 var lightbox = {
-    _e: 'div#lightbox',
-    _state: $(this._e).is(":visible")*2, // 0: invisible, 1: showing, 2: visible, 3: hiding
     _restore: [],
     _current_image: undefined, //html element (from frame) of currently displayed image
+
+    //initialize values
+    __init: function() {
+        this._lightbox = "div#pho-lightbox";
+        this._img_id = "pho-lightbox_img";
+        this._img = 'img#' + this._img_id;
+        this._caption = 'div#pho-lightbox_caption';
+        this._state = this.get().is(":visible")*2; // 0: invisible, 1: showing, 2: visible, 3: hiding
+    },
+
+    // initialize lightbox events
+    init_events: function() {
+        var lb = this.get();
+        //opacity is set here because jquery makes it cross-browser
+        lb.css({'opacity':'1'}).hide()
+          .on($.getTapEvent(), this.hide);
+        //initialize swipe gesture in lightbox
+        lb.on('swipeleft', this.navigate.move_event('right'))
+          .on('swiperight', this.navigate.move_event('left'));
+
+        //initialize lightbox navigation
+        $(this.navigate._right).on($.getTapEvent(), lightbox.navigate.move_event('right'));
+        $(this.navigate._left).on($.getTapEvent(), lightbox.navigate.move_event('left'));
+    },
+
+    // return lightbox element
+    get: function() {
+        return $(this._lightbox);
+    },
+
+    // return img element of lightbox
+    get_img: function() {
+        return $(this._img);
+    },
+
+    // return lightbox caption element
+    get_caption: function() {
+        return $(this._caption);
+    },
 
     _extract_css_size: function(string, abs_size) {
         // detect: % or px value
@@ -352,16 +372,16 @@ var lightbox = {
         return parseInt(string)
     },
 
-    //return width that image will have in lightbox (approx.)
+    //helper: return width that image will have in lightbox (approx.)
     get_image_width: function(image) {
         //read the ratio from the data field, if not set, try to calculate.
         var ratio = image.find('img').data('ratio');
         ratio = ratio || image.width()/image.height()
 
-        var img = $(lightbox._e).find('img#lightbox_img');
+        var img = this.get_img();
         // detect: % or px value
-        var max_height = lightbox._extract_css_size( img.css('max-height'), $(window).height() );
-        var max_width = lightbox._extract_css_size( img.css('max-width'), $(window).width() );
+        var max_height = this._extract_css_size( img.css('max-height'), $(window).height() );
+        var max_width = this._extract_css_size( img.css('max-width'), $(window).width() );
         // max is wider than image
         if( max_width/max_height > ratio ) {
             return max_height*ratio;
@@ -377,31 +397,16 @@ var lightbox = {
                 callback(img, caption, ...)
         */
         var image = $(image);
-        var img = image_loader(image, lightbox.get_image_width(image), $(lightbox._e + ' img#lightbox_img'));
+        var img = image_loader(image, this.get_image_width(image), this.get_img());
+        var lightbox = this;
         img.load(function() {
-            var e = $(lightbox._e);
+            var e = lightbox.get();
 
             //insert image
-            e.find('img#lightbox_img').replaceWith( $(this).attr('id','lightbox_img').hide() );
+            lightbox.get_img().replaceWith( $(this).attr('id', lightbox._img_id).hide() );
 
             //load caption
-            var text = image.find('.caption span').text();
-            if( text == '' ) {
-                // if there is no caption, give away space
-                var c = e.find('.lightbox_caption');
-                if( !lightbox._restore['lightbox_height'] ) {
-                    lightbox._restore['lightbox_height'] = c.css('height');
-                }
-                c.css({'height':'5%'}).text('');
-            } else {
-                // display captions
-                e.find('.lightbox_caption').height( lightbox._restore['lightbox_height'] )
-                    .text( text ).css({'color': image.css('color') });
-                lightbox._restore['lightbox_height'] = null;
-            }
-
-            //adjust position
-            e.css({'top':0});
+            e.trigger({type:'lightbox_caption_load.pho', text:image.find('.caption span').text(), color:image.css('color')});
 
             //update hash
             hash( null, image.attr('id') );
@@ -416,11 +421,12 @@ var lightbox = {
 
     reload_image: function() {
         // only if lightbox is visible or showing.
-        if( lightbox._state == 1 || lightbox._state == 2 ) {
+        if( this._state == 1 || this._state == 2 ) {
             // reload currently displayed image (probably in higher resolution)
-            var img = image_loader(lightbox._current_image, lightbox.get_image_width(lightbox._current_image));
+            var img = image_loader(this._current_image, this.get_image_width(this._current_image));
+            var lightbox = this;
             img.load(function() {
-                $(lightbox._e).find('img#lightbox_img').replaceWith( $(this).attr('id','lightbox_img') );
+                lightbox.get_img().replaceWith( $(this).attr('id', lightbox._img_id) );
             });
         }
     },
@@ -438,31 +444,47 @@ var lightbox = {
         lightbox._load(image, function() {
             // cancel, if state is not 'showing' anymore
             if( lightbox._state != 1) {
-                $(lightbox._e).trigger({type:'load_lightbox_cancel.pho', image:image});
+                lightbox.get().trigger({type:'load_lightbox_cancel.pho', image:image});
                 return;
             }
-            //hide scrollbar
-            lightbox._restore.scrollTop = $(document).scrollTop();
-            $('body, html').css({'overflow': 'hidden'});
-            $('#frame_container').css({'display': 'none'});
 
             //finish animation
-            $(lightbox._e).trigger({type:'load_lightbox_end.pho', image:image});
+            lightbox.get().trigger({type:'load_lightbox_end.pho', image:image});
             lightbox._state = 2; //visible
         });
 
         //start animation
-        $(lightbox._e).trigger({type:'load_lightbox_start.pho', image:image});
+        lightbox.get().trigger({type:'load_lightbox_start.pho', image:image});
     },
 
     navigate: {
         //# navigation inside the lightbox
         _hidden: false,
+        _left: 'div#pho-lightbox_navigation_left',
+        _right: 'div#pho-lightbox_navigation_right',
+        _arrow_left: 'div#pho-lightbox_navigation_arrow_left',
+        _arrow_right: 'div#pho-lightbox_navigation_arrow_right',
+        _close: 'pho-lightbox_close',
+
+        // return navigation elements
+        get: function() {
+            return $(this._left + ', ' + this._right);
+        },
+
+        // return navigation arrows
+        get_arrow: function() {
+            return $(this._arrow_left + ', ' + this._arrow_right);
+        },
+
+        // return close element
+        get_close: function() {
+            return $(this._close);
+        },
 
         toggle: function() {
             //# show of hide navigation depending on if there is a previous/next image
-            $('div#lightbox_navigator_left, div#lightbox_arrow_left').toggle(  lightbox._current_image.prevAll('.image').length != 0 && !lightbox.navigate._hidden );
-            $('div#lightbox_navigator_right, div#lightbox_arrow_right').toggle( lightbox._current_image.nextAll('.image').length != 0 && !lightbox.navigate._hidden );
+            $(this._left + ', '+ this._arrow_left).toggle(  lightbox._current_image.prevAll('.image').length != 0 && !lightbox.navigate._hidden );
+            $(this._right + ', '+ this._arrow_right).toggle( lightbox._current_image.nextAll('.image').length != 0 && !lightbox.navigate._hidden );
         },
 
         move_event: function(to) {
@@ -517,14 +539,14 @@ var lightbox = {
                 return;
             }
 
-            $(lightbox._e).trigger({type:'move_lightbox_start.pho', to:to});
+            $(lightbox._lightbox).trigger({type:'move_lightbox_start.pho', to:to});
 
             // set new current image
             lightbox._current_image = to_image;
 
             // start an event for the transition to the new image --> animation.js
             img = lightbox._load(to_image, function(img) {
-                $(lightbox._e).trigger({type:'move_lightbox_end.pho', image:to_image, img:img, to:to});
+                $(lightbox._lightbox).trigger({type:'move_lightbox_end.pho', image:to_image, img:img, to:to});
             });
         },
 
@@ -542,17 +564,13 @@ var lightbox = {
         return;
     }
     lightbox._state = 3; //hiding
-    $('body, html').css({'background-color': $('div.current').css('background-color'), 'overflow': ''});
-    $('#frame_container').css({'display': ''});
-    tram(document).set({'scrollTop':lightbox._restore.scrollTop});
-    tram($('#lightbox')).set({'top':lightbox._restore.scrollTop});
 
-    $(lightbox._e).trigger('hide_lightbox.pho');
+    $(lightbox._lightbox).trigger('hide_lightbox.pho');
 
     //update hash
     hash( null, "" );
 
-    $(lightbox._e).promise().done(function() {
+    $(lightbox._lightbox).promise().done(function() {
         // mark invisible, if has been hiding
         if( lightbox._state == 3 ) {
             lightbox._state = 0; //invisible
@@ -571,6 +589,8 @@ var lightbox = {
   }
 }
 
+lightbox.__init();
+
 //// NAVIGATION
 
 //initialize navigation
@@ -579,8 +599,7 @@ $(document).on('init.pho', function() {
   $(window).on('hashchange', navigate.move_event('hash'));
 
   //initialize navigation action
-  $('div#navigator_right').on($.getTapEvent(), navigate.move_event('right'));
-  $('div#navigator_left').on($.getTapEvent(), navigate.move_event('left'));
+  navigate.init_events();
   navigate.toggle();
 
   //initialize swipe gesture
@@ -594,7 +613,7 @@ $(document).on('init.pho', function() {
           // hide navigation
           navigate.toggle();
           // show touch footer
-          navigate._touch_footer();
+          navigate.init_touch_footer();
       }
   });
 
@@ -609,9 +628,35 @@ $(document).on('init.pho', function() {
 });
 
 var navigate = {
+    _navigation_left: 'div#pho-navigation_left',
+    _navigation_right: 'div#pho-navigation_right',
+    _arrow_left: 'div#pho-navigation_arrow_left',
+    _arrow_right: 'div#pho-navigation_arrow_right',
+    _touch_footer: 'div#pho-touch_footer',
+
+    // return navigation elements
+    get: function() {
+        return $(this._navigation_left + ', ' + this._navigation_right);
+    },
+
+    // return navigation arrows
+    get_arrow: function() {
+        return $(this._arrow_left + ', ' + this._arrow_right);
+    },
+
+    // return touch footer element
+    get_touch_footer: function() {
+        return $(this._touch_footer);
+    },
+
+    init_events: function() {
+        $(this._navigation_right).on($.getTapEvent(), navigate.move_event('right'));
+        $(this._navigation_left).on($.getTapEvent(), navigate.move_event('left'));
+    },
+
   toggle: function() {
     //check if navigators should be visible or not
-    var page = parseInt( $('div.current').attr('id').substr(4) );
+    var page = frame.get_page();
     var ret = new Array;
 
     if( html.max_page != -1 && page == html.max_page ) {
@@ -629,11 +674,11 @@ var navigate = {
     //hide/show navigation
     // hide on touch devices
     if(html.hasOwnProperty('touch') && html.touch) {
-      $('div#navigator_right, div#arrow_right').hide();
-      $('div#navigator_left, div#arrow_left').hide();
+      $(this._navigation_right + ', ' + this._arrow_right).hide();
+      $(this._navigation_left + ', ' + this._arrow_left).hide();
     } else {
-      $('div#navigator_right, div#arrow_right').toggle(ret['right']);
-      $('div#navigator_left, div#arrow_left').toggle(ret['left']);
+      $(this._navigation_right + ', ' + this._arrow_right).toggle(ret['right']);
+      $(this._navigation_left + ', ' + this._arrow_left).toggle(ret['left']);
     }
 
     return ret;
@@ -648,32 +693,28 @@ var navigate = {
         return navigate._hash();
       }
 
-      navigate._touch_footer(false); //hide touch footer
+      navigate.init_touch_footer(false); //hide touch footer
 
       if( navigate.toggle()[to] == 0 || is_full_view() ) { return; } //last element, can't go right / or is viewing single picture
 
-      var current = $('div.current');
+      var current = frame.get_current();
 
       var new_frame = navigate['_'+to](current);
 
-      //set document background (yes it's necessary!)
-      $('body, html').css({'background-color': new_frame.css('background-color')});
-
       //change "current" flag (css-class) to frame on the right and focus new frame
-      current.removeClass('current');
-      new_frame.addClass('current');
+      frame.set_current( new_frame );
 
-      $('#frame_container').trigger({type:'move_'+to+'.pho', current:current});
+      frame.get_container().trigger({type:'move_'+to+'.pho', current:current});
 
       //update hash
-      hash( new_frame.attr('id').substr(4) );
+      hash( frame.get_page() );
 
       navigate.toggle();
   },
 
   _hash: function() {
     var h = hash();
-    var curr = parseFloat( $('div.current').attr('id').substr(4) );
+    var curr = frame.get_page();
 
     // move left or right depending on hash value
     if( h[0] != curr ) {
@@ -687,31 +728,27 @@ var navigate = {
 
   _left: function(current) {
     //prepend new frame if this is the first frame.
-    if( current.prev().is($('.frame:first')) ) {
-      frame.create( $('#frame_container').prepend(html.frame_element).children(':first').css({'left':'-100%'}).hide());
-    }
+    frame.append();
     return current.prev();
   },
 
   _right: function(current) {
     //append new frame if this is the last frame.
-    if( current.next().is($('.frame:last')) ) {
-      frame.create( $('#frame_container').append(html.frame_element).children(':last').css({'left':'100%'}).hide());
-    }
+    frame.append();
     return current.next();
   },
 
-  _touch_footer: function(enable) {
+  init_touch_footer: function(enable) {
     if(!html.touch) {
-        $('#touch_footer').trigger('hide_touch_footer.pho');
+        $(this._touch_footer).trigger('hide_touch_footer.pho');
         return;
     }
     enable = (enable===undefined)? true : enable;
 
     if(enable) {
-      $('#touch_footer').trigger('show_touch_footer.pho');
+      $(this._touch_footer).trigger('show_touch_footer.pho');
     } else {
-      $('#touch_footer').trigger('hide_touch_footer.pho');
+      $(this._touch_footer).trigger('hide_touch_footer.pho');
     }
   }
 }
@@ -719,19 +756,73 @@ var navigate = {
 //// FRAME
 
 var frame = {
+    __init: function() {
+        this._container = "div#pho-frame_container";
+        this._frames_id = "pho-frame";
+        this._frames = "div." + this._frames_id;
+        this._current_frame_id = "pho-current";
+        this._current_frame = "div."  + this._current_frame_id;
+        this._page_id = "pho-page";
+        this._dummy = '<div class="' + this._frames_id + '" tabindex="-1"></div>';
+    },
+
+    get_container: function() {
+        return $(this._container);
+    },
+
+    // initializes all frames in the container
+    init_container: function( page ) {
+        this.create( $(this._frames + ':eq(1)').attr('id', this._page_id + page).focus() ); //first visible frame
+        if( page>0 ) {
+            this.create( $(this._frames + ':first').attr('id', this._page_id + (page-1)).hide());
+        }
+        this.create( $(this._frames + ':eq(2)').attr('id', this._page_id + (page+1)).hide());
+    },
+
+    // append new frames to the container, where necessary.
+    append: function() {
+        var current = this.get_current();
+        // new first frame
+        if( current.prev().is($(this._frames + ':first')) ) {
+            // copy dummy html to new element
+            this.create( this.get_container().prepend(this._dummy).children(':first').hide() );
+        }
+        // new last frame
+        if( current.next().is($(this._frames + ':last')) ) {
+            // copy dummy html to new element
+            this.create( this.get_container().append(this._dummy).children(':last').hide() );
+        }
+    },
+
+    // returns current frame element
+    get_current: function() {
+        return $(this._current_frame);
+    },
+
+    // set the current frame element
+    set_current: function(new_current) {
+        this.get_current().removeClass( this._current_frame_id );
+        new_current.addClass( this._current_frame_id );
+    },
+
   create: function( frame_element ) {
     //load page and fill into frame
     // find number for new frame
     if( !frame_element.attr('id') ) {
-      if( n = frame_element.prev().attr('id') ) { n = parseFloat( n.substr(4) ) + 1; }
-      else if( n = frame_element.next().attr('id') ) { n = parseFloat( n.substr(4) ) - 1 }
-      else { return; }
-      frame_element.attr('id','page'+n);
+      if( frame_element.prev().attr('id') ) {
+        n = this._get_id( frame_element.prev() ) + 1;
+      } else if( frame_element.next().attr('id') ) {
+        n = this._get_id( frame_element.next() ) - 1;
+      }     else {
+        return;
+      }
+      frame_element.attr('id', this._page_id + n);
     }
 
-    curr = parseFloat( frame_element.attr('id').substr(4) );
+    curr = this._get_id( frame_element );
     if( curr < 0 ) { return; } //don't load pages below 0
     //load and insert page
+    var frame = this;
     (function(current) {
       frame_element.load(config.PAGE_FOLDER+'/'+current+'.html', function(resp, status) {
         if( status == "error") { //found last page
@@ -747,15 +838,24 @@ var frame = {
           return;
         }
         frame._init_viewer( frame_element ); //initialize viewer
-        if(frame_element.is( $('div.current') )) {
+        if(frame_element.is( $(frame._current_frame) )) {
           navigate.move('hash'); // load image etc.
         }
       });
     })(curr);
   },
 
+    get_page: function() {
+        return this._get_id(this._current_frame);
+    },
+
+    // returns the page number of the frame
+    _get_id: function( frame_element ) {
+        return parseInt( $(frame_element).attr('id').substr(8) ); //len('pho-page') = 8
+    },
+
     // return width of image. image = div element
-    get_image_width: function(image) {
+    _get_image_width: function(image) {
         var e = new show_in_background(image);
         e.show();
         var width = image.width();
@@ -771,6 +871,7 @@ var frame = {
     var images = frame_element.find('.image');
     var queue = new function_queue();
     //load images
+    var frame = this;
     images.each( function() {
       var img = $(this);
       var ext = img.data('ext') || ""; //get file extension if any;
@@ -778,11 +879,10 @@ var frame = {
       if( !img_url ) { img_url = img.attr('id') }
 
       img.trigger('load_image_start.pho');
-      var img_element = image_loader(img, frame.get_image_width(img)).hide();
+      var img_element = image_loader(img, frame._get_image_width(img));
 
       var show = function() {
-        img.trigger('load_image_end.pho');
-        img.prepend( img_element.fadeIn().css('display','') ); //"display" should be block (defined in css)
+        img.trigger({type:'load_image_end.pho', img:img_element});
       };
       queue.put(show);
       img_element.load(function() {
@@ -804,16 +904,18 @@ var frame = {
     reload_images: function() {
         //reload images (maybe with higher resolution)
         // priority on current frame
-        var images = $('div.current').find('.image');
-        images = $.merge(images, $('div.frame:not(div.current)').find('.image'));
+        var images = $(this._current_frame).find('.image');
+        images = $.merge(images, $(this._frames + ':not(' + this._current_frame + ')').find('.image'));
 
+        var frame = this;
         images.each( function() {
             var img = $(this);
             // Do not load smaller images if larger is loaded.
-            var img_element = image_loader(img, frame.get_image_width(img), img.find('img'));
+            var img_element = image_loader(img, frame._get_image_width(img), img.find('img'));
             img_element.load(function() {
-                img.find('img').replaceWith( $(this).css('display','').data('ratio', this.width/this.height) );
+                img.find('img').replaceWith( $(this).data('ratio', this.width/this.height) );
             });
         });
     }
 }
+frame.__init();
