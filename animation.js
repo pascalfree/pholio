@@ -79,8 +79,8 @@ $(function() {
         // Hide frame container and scrollbar
         restore['scrollTop'] = $(document).scrollTop();
         // set background color of body to bg color of frame. Otherwise it will flash white.
-        $('body, html').css({'background-color': frame.get_current().css('background-color'), 'overflow': 'hidden'});
-        var frame_container = frame.get_container();
+        $('body, html').css({'background-color': frameContainer.get_current_frame().element().css('background-color'), 'overflow': 'hidden'});
+        var frame_container = frameContainer.element();
         restore['frame_container_display'] = frame_container.css('display');
         frame_container.css({'display': 'none'});
 
@@ -99,7 +99,7 @@ $(function() {
     the_lightbox.on('hide_lightbox.pho', function() {
         // restore frames
         $('body, html').css({'overflow': ''});
-        frame.get_container().css({ 'display': restore.frame_container_display });
+        frameContainer.element().css({ 'display': restore.frame_container_display });
         tram(document).set({ 'scrollTop': restore.scrollTop });
         tram(this).set({ 'top': restore.scrollTop });
 
@@ -165,13 +165,13 @@ $(function() {
     });
 
     // show caption
-    $('body').on('show_caption.pho', '.image', function() {
-        $(this).find('.caption').tram().add('opacity 0.321s ease-in-out').start({'opacity': 0.5});
+    $('body').on('show_caption.pho', '.caption', function() {
+        $(this).tram().add('opacity 0.321s ease-in-out').start({'opacity': 0.5});
     });
 
     // hide caption
-    $('body').on('hide_caption.pho', '.image', function() {
-        $(this).find('.caption').tram().start({'opacity':0});
+    $('body').on('hide_caption.pho', '.caption', function() {
+        $(this).tram().start({'opacity':0});
     });
 
     // start loading an image
@@ -182,14 +182,15 @@ $(function() {
     });
     // finished loading the image
     $('body').on('load_image_end.pho', '.image', function(e) {
-        var image = $(this);
+        var image = e.image.element();
+        var img = e.image.get_img();
         // remove floader
         image.find('.flat_loader').remove();
         // insert image
-        tram(e.img).set({'opacity':0});
-        image.prepend(e.img);
+        tram(img).set({'opacity':0}); //todo: should not access ._img here
+        image.prepend(img);
         // fade in image
-        tram(e.img).add('opacity 0.576s ease-out').start({'opacity':1});
+        tram(img).add('opacity 0.576s ease-out').start({'opacity':1});
         // show next loader
         $('.flat_loader').first().show();
     });
@@ -200,41 +201,43 @@ $(function() {
     html_body.attr('style',''); // workaround: remove style applied by tram (would hide the entire body)
 
     // move frame to left
-    frame.get_container().on('move_left.pho',function(e) {
+    frameContainer.element().on('move_left.pho',function(e) {
         // animate
-        tram(e.current).add('left 0.761s ease-out').set({'left':'0%'}).start({'left':'100%'}).then(function() {
+        tram(e.from.element()).add('left 0.761s ease-out').set({'left':'0%'}).start({'left':'100%'}).then(function() {
             this.set({'display': 'none'});
         })
-        var frame_element = e.current.prev();
+
         //set document background (yes it's necessary!)
-        $('body, html').css({'background-color': frame_element.css('background-color')});
-        tram(frame_element).add('left 0.761s ease-out').set({'left':'-100%', 'display':'block'}).start({'left':'0%'}).then(function() {
-            frame_element.focus();
+        var to = e.to.element();
+        $('body, html').css({'background-color': to.css('background-color')});
+        tram(to).add('left 0.761s ease-out').set({'left':'-100%', 'display':'block'}).start({'left':'0%'}).then(function() {
+            to.focus();
         });
 
         //copy background color
-        var color = frame_element.children('div.viewer').css('background-color');
-        frame_element.css({'background-color':color});
+        var color = to.children('div.viewer').css('background-color');
+        to.css({'background-color':color});
 
         tram($('body, html')).start({'scrollTop': 0});
     })
 
     // move frame to right
-    frame.get_container().on('move_right.pho',function(e) {
+    frameContainer.element().on('move_right.pho',function(e) {
         // animate
-        tram(e.current).add('left 0.761s ease-out').set({'left':'0%'}).start({'left':'-100%'}).then(function() {
+        tram(e.from.element()).add('left 0.761s ease-out').set({'left':'0%'}).start({'left':'-100%'}).then(function() {
             this.set({'display': 'none'});
         })
-        var frame_element = e.current.next();
+
         //set document background (yes it's necessary!)
-        $('body, html').css({'background-color': frame_element.css('background-color')});
-        tram(frame_element).add('left 0.761s ease-out').set({'left':'100%', 'display':'block'}).start({'left':'0%'}).then(function() {
-            frame_element.focus();
+        var to = e.to.element();
+        $('body, html').css({'background-color': to.css('background-color')});
+        tram(to).add('left 0.761s ease-out').set({'left':'100%', 'display':'block'}).start({'left':'0%'}).then(function() {
+            to.focus();
         });
 
         //copy background color
-        var color = frame_element.children('div.viewer').css('background-color');
-        frame_element.css({'background-color':color});
+        var color = to.children('div.viewer').css('background-color');
+        to.css({'background-color':color});
 
         tram($('body, html')).start({'scrollTop': 0});
     });

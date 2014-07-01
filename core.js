@@ -189,16 +189,19 @@ function image_loader(image, size, current) {
 function function_queue() {
   var f_list = []; // queue of functions
   var ex_list = []; // queue of functions to call
+  var param_list = []; // parameters to pass with function calls
 
   function exex() {
     var i;
     while( -1 != (i = $.inArray(f_list[0], ex_list)) ) { // while first function in queue should be executed
       var f = f_list[0];
-      // remove functio from lists;
+      var param = param_list[ i ];
+      // remove function from lists;
       f_list.splice(0,1);
       ex_list.splice(i,1);
+      param_list.splice(i,1);
       // execute function
-      f();
+      f.apply(this, param);
     }
   }
 
@@ -208,8 +211,9 @@ function function_queue() {
   }
 
   // push function to list to be called, then try to call functions according to queue
-  this.ex = function(f) {
+  this.ex = function(f, params) {
     ex_list.push(f);
+    param_list[ ex_list.indexOf(f) ] = params;
     exex();
   }
 }
@@ -263,29 +267,17 @@ $(document).ready(function() {
   var h = hash();
 
   //initialize frames
-  frame.init_container( h[0] );
+  frameContainer = new FrameContainer( h[0] );
 
   //trigger init event
-  $(document).trigger('init.pho')
+  $(document).trigger('init.pho');
 
   //reload images if window is resized
   $(window).on("debouncedresize", function(e) {
     lightbox.reload_image();
-    frame.reload_images();
+    frameContainer.reload_images();
   });
 });
-
-//// CAPTION
-
-var caption = {
-  show: function(e) {
-    $(this).trigger('show_caption.pho');
-  },
-
-  hide: function(e) {
-    $(this).trigger('hide_caption.pho');
-  }
-}
 
 //// LIGHTBOX
 
@@ -324,6 +316,7 @@ $(document).on('init.pho', function() {
 var lightbox = {
     _restore: [],
     _current_image: undefined, //html element (from frame) of currently displayed image
+    //TODO: Use the Viewer to find the images
 
     //initialize values
     __init: function() {
@@ -347,6 +340,13 @@ var lightbox = {
         //initialize lightbox navigation
         $(this.navigate._right).on($.getTapEvent(), lightbox.navigate.move_event('right'));
         $(this.navigate._left).on($.getTapEvent(), lightbox.navigate.move_event('left'));
+
+        // wait for first frame to load to load lightbox from hash
+        var $this = this;
+        frameContainer.on_first_frame_added(function() {
+            var h = hash();
+            $this.toggle.apply( $("[id='"+h[1]+"']") );
+        })
     },
 
     // return lightbox element
@@ -464,7 +464,7 @@ var lightbox = {
         _right: 'div#pho-lightbox_navigation_right',
         _arrow_left: 'div#pho-lightbox_navigation_arrow_left',
         _arrow_right: 'div#pho-lightbox_navigation_arrow_right',
-        _close: 'pho-lightbox_close',
+        _close: 'div#pho-lightbox_close',
 
         // return navigation elements
         get: function() {
@@ -483,8 +483,8 @@ var lightbox = {
 
         toggle: function() {
             //# show of hide navigation depending on if there is a previous/next image
-            $(this._left + ', '+ this._arrow_left).toggle(  lightbox._current_image.prevAll('.image').length != 0 && !lightbox.navigate._hidden );
-            $(this._right + ', '+ this._arrow_right).toggle( lightbox._current_image.nextAll('.image').length != 0 && !lightbox.navigate._hidden );
+            $(this._left + ', '+ this._arrow_left).toggle( !lightbox.navigate._hidden && lightbox._current_image && lightbox._current_image.prevAll('.image').length != 0 );
+            $(this._right + ', '+ this._arrow_right).toggle( !lightbox.navigate._hidden && lightbox._current_image && lightbox._current_image.nextAll('.image').length != 0 );
         },
 
         move_event: function(to) {
@@ -509,7 +509,7 @@ var lightbox = {
                 var h = hash();
 
                 //do nothing if lightbox is not visible, or image from hash matches displayed image (current)
-                if( lightbox._state!=2 || h[1] == lightbox._current_image.attr('id') ) {
+                if( lightbox._state!=2 || !h[1] || h[1] == lightbox._current_image.attr('id') ) {
                     return;
                 }
 
@@ -652,24 +652,20 @@ var navigate = {
     init_events: function() {
         $(this._navigation_right).on($.getTapEvent(), navigate.move_event('right'));
         $(this._navigation_left).on($.getTapEvent(), navigate.move_event('left'));
+
+        var $this = this;
+        frameContainer.on_frame_added( function() {
+            $this.toggle();
+        });
     },
 
   toggle: function() {
     //check if navigators should be visible or not
-    var page = frame.get_page();
+    var page = frameContainer.get_page();
+
     var ret = new Array;
-
-    if( html.max_page != -1 && page == html.max_page ) {
-      ret['right'] = false;
-    } else {
-      ret['right'] = true;
-    }
-
-    if( page == 0 ) {
-      ret['left'] = false;
-    } else {
-      ret['left'] = true;
-    }
+    ret['right'] = frameContainer.has_page( page + 1 );
+    ret['left'] = frameContainer.has_page( page - 1 );
 
     //hide/show navigation
     // hide on touch devices
@@ -695,47 +691,34 @@ var navigate = {
 
       navigate.init_touch_footer(false); //hide touch footer
 
-      if( navigate.toggle()[to] == 0 || is_full_view() ) { return; } //last element, can't go right / or is viewing single picture
+      if( is_full_view() ) { return; } // is viewing single picture
 
-      var current = frame.get_current();
+      var current = frameContainer.get_page();
+      var new_page = navigate['_'+to](current);
 
-      var new_frame = navigate['_'+to](current);
-
-      //change "current" flag (css-class) to frame on the right and focus new frame
-      frame.set_current( new_frame );
-
-      frame.get_container().trigger({type:'move_'+to+'.pho', current:current});
+      //change current page
+      frameContainer.set_page( new_page );
 
       //update hash
-      hash( frame.get_page() );
+      hash( frameContainer.get_page() );
 
       navigate.toggle();
   },
 
   _hash: function() {
     var h = hash();
-    var curr = frame.get_page();
+    frameContainer.set_page( h[0] );
 
-    // move left or right depending on hash value
-    if( h[0] != curr ) {
-      if( h[0] == curr+1 ) { navigate.move('right'); }
-      else if( h[0] == curr-1 ) { navigate.move('left'); }
-      else { location.reload(); }
-    }
-
-    lightbox.toggle.apply($("[id='"+h[1]+"']"));
+    // show/hide lightbox if hash says so
+    lightbox.toggle.apply( $("[id='"+h[1]+"']") );
   },
 
   _left: function(current) {
-    //prepend new frame if this is the first frame.
-    frame.append();
-    return current.prev();
+    return current-1;
   },
 
   _right: function(current) {
-    //append new frame if this is the last frame.
-    frame.append();
-    return current.next();
+    return current+1;
   },
 
   init_touch_footer: function(enable) {
@@ -753,169 +736,330 @@ var navigate = {
   }
 }
 
-//// FRAME
+//// FRAME CONTAINER
 
-var frame = {
-    __init: function() {
-        this._container = "div#pho-frame_container";
-        this._frames_id = "pho-frame";
-        this._frames = "div." + this._frames_id;
-        this._current_frame_id = "pho-current";
-        this._current_frame = "div."  + this._current_frame_id;
-        this._page_id = "pho-page";
-        this._dummy = '<div class="' + this._frames_id + '" tabindex="-1"></div>';
-    },
+function FrameContainer( page ) {
+    this._container = "div#pho-frame_container";
 
-    get_container: function() {
-        return $(this._container);
-    },
+    this.frame = [];
 
-    // initializes all frames in the container
-    init_container: function( page ) {
-        this.create( $(this._frames + ':eq(1)').attr('id', this._page_id + page).focus() ); //first visible frame
-        if( page>0 ) {
-            this.create( $(this._frames + ':first').attr('id', this._page_id + (page-1)).hide());
-        }
-        this.create( $(this._frames + ':eq(2)').attr('id', this._page_id + (page+1)).hide());
-    },
+    this._current = null;
+    this._last = null;
+    this._first = null;
+    this._max_page = null;
 
-    // append new frames to the container, where necessary.
-    append: function() {
-        var current = this.get_current();
-        // new first frame
-        if( current.prev().is($(this._frames + ':first')) ) {
-            // copy dummy html to new element
-            this.create( this.get_container().prepend(this._dummy).children(':first').hide() );
-        }
-        // new last frame
-        if( current.next().is($(this._frames + ':last')) ) {
-            // copy dummy html to new element
-            this.create( this.get_container().append(this._dummy).children(':last').hide() );
-        }
-    },
+    // event listeners
+    this._listeners = {
+        'on_first_frame_added': [],
+        'on_frame_added': []
+    };
 
-    // returns current frame element
-    get_current: function() {
-        return $(this._current_frame);
-    },
+    // Initialize first frames
+    var container = this.element();
+    var frame = new Frame( page );
+    var $this = this;
+    frame.exists(function() {
+        $this._current = page;
+        $this._last = $this._first = page;
+        this.insert_into( container );
+        $this.frame[ page ] = this;
 
-    // set the current frame element
-    set_current: function(new_current) {
-        this.get_current().removeClass( this._current_frame_id );
-        new_current.addClass( this._current_frame_id );
-    },
+        $this._call_listeners('on_first_frame_added');
+        $this._call_listeners('on_frame_added');
 
-  create: function( frame_element ) {
-    //load page and fill into frame
-    // find number for new frame
-    if( !frame_element.attr('id') ) {
-      if( frame_element.prev().attr('id') ) {
-        n = this._get_id( frame_element.prev() ) + 1;
-      } else if( frame_element.next().attr('id') ) {
-        n = this._get_id( frame_element.next() ) - 1;
-      }     else {
-        return;
-      }
-      frame_element.attr('id', this._page_id + n);
+        $this.append();
+    });
+}
+
+FrameContainer.prototype.on_frame_added = function( listener ) {
+    this._listeners['on_frame_added'].push( listener );
+}
+
+FrameContainer.prototype.on_first_frame_added = function( listener ) {
+    this._listeners['on_first_frame_added'].push( listener );
+}
+
+FrameContainer.prototype._call_listeners = function( event ) {
+    for( listener in this._listeners[event] ) {
+        this._listeners[event][listener]();
     }
+}
 
-    curr = this._get_id( frame_element );
-    if( curr < 0 ) { return; } //don't load pages below 0
+// returns container element
+FrameContainer.prototype.element = function() {
+    return $(this._container);
+}
+
+// append new frames to the container, where necessary.
+FrameContainer.prototype.append = function() {
+    var $this = this;
+    // left
+    if( this._current == this._first && this._current != 0 ) {
+        var newframe_left = new Frame( this._current-1 );
+        newframe_left.exists(function() {
+            $this._first--;
+            newframe_left.insert_into( $this.element() ).hide();
+            $this.frame[ $this._current-1 ] = newframe_left;
+            $this._call_listeners('on_frame_added');
+        });
+    }
+    // right
+    if( this._current == this._last && this._current != this._max_page ) {
+        var newframe_right = new Frame( this._current+1 );
+        newframe_right.exists(function() {
+            $this._last++;
+            newframe_right.insert_into( $this.element() ).hide();
+            $this.frame[ $this._current+1 ] = newframe_right;
+            $this._call_listeners('on_frame_added');
+        }, function() {
+            $this._max_page = ($this._max_page == null || $this._current < $this._max_page)? $this._current : $this._max_page;
+        });
+    }
+}
+
+FrameContainer.prototype.get_page = function() {
+    return this._current;
+}
+
+FrameContainer.prototype.get_current_frame = function() {
+    return this.frame[this._current];
+}
+
+// return true if the page `page` exists, false otherwise
+FrameContainer.prototype.has_page = function( page ) {
+    return (page >= this._first && page <= this._last);
+}
+
+// set the current page
+FrameContainer.prototype.set_page = function( page ) {
+    // limit input
+    page = Math.max(Math.min(page, this._last), this._first);
+    // if nothing changes, do nothing
+    if( this._current == page ) {
+        return;
+    }
+    var from = this.frame[this._current];
+    var direction = this._current > page ? 'left' : 'right';
+    this._current = page;
+    // trigger page change event
+    frameContainer.element().trigger({type:'move_'+direction+'.pho', from:from, to:this.frame[page]});
+    // append new frames if necessary
+    this.append();
+}
+
+FrameContainer.prototype.reload_images = function() {
+    // reload images in all frame starting with the current frame
+    this.frame[this._current].reload_images();
+    for( var i = this._first ; i <= this._last ; ++i ) {
+        if( i != this._current ) {
+            this.frame[i].reload_images();
+        }
+    }
+}
+
+//// FRAME
+function Frame( id ) {
+    // create and store html element
+    this._e = $('<div id="' + this._page_id + id + '" class="' + this._id + '" tabindex="-1"></div>');
+    this.viewer;
+    this._exists = null;
+    this._exists_callback_true = null;
+    this._exists_callback_false = null;
+
+    // load viewer
+    if( id < 0 ) { return; } //don't load pages below 0
     //load and insert page
-    var frame = this;
-    (function(current) {
-      frame_element.load(config.PAGE_FOLDER+'/'+current+'.html', function(resp, status) {
-        if( status == "error") { //found last page
-          // set new limit
-          html.max_page = (html.max_page==-1 || current <= html.max_page)? current-1 : html.max_page;
-          //check if new limit is exceeded
-          if(hash()[0] > html.max_page) {
-            hash(html.max_page);
-            navigate.move('hash'); //fix: onhashchange may miss
-          }
-          navigate.toggle();
-          //frame_element.remove(); //buggy
-          return;
+    var $this = this;
+    this._e.load( config.PAGE_FOLDER + '/' + id + '.html', function(resp, status) {
+        if( status == "error" ) { //found last page
+            $this._set_exists( false );
+            return;
         }
-        frame._init_viewer( frame_element ); //initialize viewer
-        if(frame_element.is( $(frame._current_frame) )) {
-          navigate.move('hash'); // load image etc.
+        $this._set_exists( true );
+
+        var viewer = $this._e.children('div.viewer');
+        $this._e.css( {'background-color': viewer.css('background-color') } );
+
+        $this.viewer = new Viewer( viewer );
+    });
+
+    return this;
+}
+
+Frame.prototype._id = "pho-frame";
+Frame.prototype._page_id = "pho-page";
+
+Frame.prototype.element = function() {
+    return $(this._e);
+}
+
+Frame.prototype.hide = function() {
+    this._e.hide();
+    return this;
+}
+
+Frame.prototype.show = function() {
+    this._e.show();
+    return this;
+}
+
+Frame.prototype.insert_into = function( parent ) {
+    parent.append(this._e);
+    return this;
+}
+
+Frame.prototype.reload_images = function() {
+    this.viewer.reload_images();
+}
+
+Frame.prototype.exists = function(callback_true, callback_false) {
+    if( this._exists !== null ) {
+        if( this._exists ) {
+            callback_true();
+        } else {
+            callback_false();
         }
-      });
-    })(curr);
-  },
+    } else {
+        this._exists_callback_true = callback_true;
+        this._exists_callback_false = callback_false;
+    }
+}
 
-    get_page: function() {
-        return this._get_id(this._current_frame);
-    },
+Frame.prototype._set_exists = function(value) {
+    this._exists = value;
+    if( value && this._exists_callback_true !== null ) {
+        (this._exists_callback_true)();
+    } else if( !value && this._exists_callback_false !== null ) {
+        (this._exists_callback_false)();
+    }
+}
 
-    // returns the page number of the frame
-    _get_id: function( frame_element ) {
-        return parseInt( $(frame_element).attr('id').substr(8) ); //len('pho-page') = 8
-    },
+//// PAGE
 
-    // return width of image. image = div element
-    _get_image_width: function(image) {
-        var e = new show_in_background(image);
-        e.show();
-        var width = image.width();
-        e.restore();
-        return width;
-    },
+//// VIEWER
+function Viewer( element ) {
+    this._e = $(element);
+    if( !this._e.hasClass('viewer') ) {
+        throw "Error: Tried to initialize a Viewer object with a non viewer element.";
+    }
+    this._images = [];
 
-  _init_viewer: function( frame_element ) {
-    //copy background color
-    var color = frame_element.children('div.viewer').css('background-color');
-    frame_element.css({'background-color':color});
-
-    var images = frame_element.find('.image');
+    var images = this._e.find('.image');
     var queue = new function_queue();
     //load images
-    var frame = this;
+    var $this = this;
     images.each( function() {
-      var img = $(this);
-      var ext = img.data('ext') || ""; //get file extension if any;
-      var img_url = img.attr('alt');
-      if( !img_url ) { img_url = img.attr('id') }
+        var image_element = $(this);
+        // create image element
+        var image = new Image( image_element )
+        $this._images.push( image ); //store in view
 
-      img.trigger('load_image_start.pho');
-      var img_element = image_loader(img, frame._get_image_width(img));
+        var show = function(image) {
+            image_element.trigger({type:'load_image_end.pho', image:image}); //passing entire image object instead of img element inside image element
+        };
+        queue.put(show);
 
-      var show = function() {
-        img.trigger({type:'load_image_end.pho', img:img_element});
-      };
-      queue.put(show);
-      img_element.load(function() {
-        // store the image ratio in the element
-        $(this).data('ratio', this.width/this.height);
-
-        queue.ex(show);
-      })
-      img.hover( caption.show, caption.hide );
+        image_element.trigger('load_image_start.pho');
+    
+        image.load( function() {
+            queue.ex(show, [this]);
+        } );
     });
 
     //make images clickable
     images.on($.getTapEvent(), lightbox.show );
 
-    //enable external links
-    frame_element.find('[class^=ref_]').attr('target','_blank');
-  },
+    return this;
+}
 
-    reload_images: function() {
-        //reload images (maybe with higher resolution)
-        // priority on current frame
-        var images = $(this._current_frame).find('.image');
-        images = $.merge(images, $(this._frames + ':not(' + this._current_frame + ')').find('.image'));
-
-        var frame = this;
-        images.each( function() {
-            var img = $(this);
-            // Do not load smaller images if larger is loaded.
-            var img_element = image_loader(img, frame._get_image_width(img), img.find('img'));
-            img_element.load(function() {
-                img.find('img').replaceWith( $(this).data('ratio', this.width/this.height) );
-            });
-        });
+Viewer.prototype.reload_images= function() {
+    //reload all images in viewer images (maybe with higher resolution)
+    for( var i = 0; i < this._images.length; ++i ) {
+        this._images[i].reload();
     }
 }
-frame.__init();
+
+//// IMAGE
+function Image( element ) {
+    // check and store html element
+    var image = $(element);
+    if( !image.hasClass('image') ) {
+        throw "Error: Tried to initialize an Image object with a non image element.";
+    }
+    this._e = image;
+
+    // extract properties
+    this._img_name = image.attr('id');
+    this._img_ext = image.data('ext') || "";
+    this._ratio = undefined;
+    this.caption = new Caption( image.find('div.caption') );
+
+    // show caption on hover
+    var $caption = this.caption;
+    image.hover( function() {
+        $caption.show();
+    }, function() {
+        $caption.hide();
+    });
+
+    return this;
+}
+
+Image.prototype.load = function( onload ) {
+    // load image
+    this._img = image_loader(this._e, this.get_width());
+    var $this = this;
+    this._img.load( function() {
+        // store the aspect ratio
+        $this._ratio = this.width/this.height;
+
+        onload.apply($this);
+    });
+}
+
+Image.prototype.element = function() {
+    return $(this._e);
+}
+
+Image.prototype.get_img = function() {
+    return $(this._img);
+}
+
+// return width of image
+Image.prototype.get_width = function() { //_get_image_width
+    var e = new show_in_background(this._e);
+    e.show();
+    var width = this._e.width();
+    e.restore();
+    return width;
+}
+
+Image.prototype.reload = function() {
+    var old_img = this._img;
+    this._img = image_loader(this._e, this.get_width());
+    var $this = this;
+    this._img.load(function() {
+        // store the aspect ratio
+        $this._ratio = this.width/this.height;
+
+        old_img.replaceWith( $(this) );
+    })
+}
+
+//// CAPTION
+
+function Caption( element ) {
+    this._e = element;
+
+    //enable external links
+    element.find('[class^=ref_]').attr('target','_blank');
+}
+
+Caption.prototype.show = function() {
+    this._e.trigger('show_caption.pho');
+}
+
+Caption.prototype.hide = function() {
+    this._e.trigger('hide_caption.pho');
+}
+

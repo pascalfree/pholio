@@ -303,7 +303,7 @@ div#pho-lightbox_close {
   padding: 0 10px 10px 0;
 }
 
-#touch_footer {
+#pho-touch_footer {
   display: none;
   position: fixed;
   bottom: 0;
