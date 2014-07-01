@@ -2,7 +2,6 @@
 //global vars
 html = {};
 html.touch = false;
-html.max_page = -1;
 
 //// UTILITY
 
@@ -74,31 +73,28 @@ function is_full_view() {
 
 /**
  *  image_loader: loads the smallest available image larger or equal to the given size
- *  @param image: an image container element //TODO: document these
+ *  @param image: an Image object //TODO: document these
  *  @param size: minimum size of the image to be loaded
  *  @param current (optional): img element that will be replaced. New image will not be loaded, if it is the same.
  *  @return: an img element on success and false, if no image was found (or is the same as the current image)
  */
 function image_loader(image, size, current) {
-  image = $(image);
+  //image = $(image);
+  image_loader.loaded_size = image_loader.loaded_size || {};
 
   // only load new images, larger than previously loaded images.
   // The large image is cached
-  loaded_size = image.data('loaded_size') || 0;
+  loaded_size = image_loader.loaded_size[image.id()] || 0;
   size = size > loaded_size? size : loaded_size;
 
   // find next available image size
-  // look in image div
-  var sizes = image.data('size') || [];
+  // use global sizes
+  var sizes = config.IMAGE_SIZES || [];
   sizes = sizes.slice(0);
   // look in viewer
-  if( v_sizes = image.parent('.viewer').data('size') ) {
-    $.merge(sizes, v_sizes.slice(0))
-  }
-  // use global sizes
-  if( g_sizes = config.IMAGE_SIZES.slice(0) ) { //slice to copy
-    $.merge(sizes, g_sizes);
-  }
+  $.merge(sizes, image.viewer.sizes.slice(0))
+  // look in image div
+  $.merge(sizes, image.sizes.slice(0))
 
   //get maximum size available
   var max_size = Math.max.apply(Math, sizes);
@@ -123,8 +119,8 @@ function image_loader(image, size, current) {
   }
 
   var size_iterator = 0;
-  var img_url = image.attr('id');
-  var img_ext = image.data('ext');
+  var img_url = image._img_name;
+  var img_ext = image._img_ext;
   var img = $('<img alt="'+ img_url +'">');
 
   // abort, if the current img is the same as the new image.
@@ -155,9 +151,9 @@ function image_loader(image, size, current) {
         img.attr('src', $(this).attr('src') );
         // store size of successfully loaded image
         if( size_iterator == -1 ) {
-            image.data('loaded_size', max_size+1);
+            image_loader.loaded_size[image.id()] = max_size+1;
         } else {
-            image.data('loaded_size', available_size[size_iterator-1]);
+            image_loader.loaded_size[image.id()] = available_size[size_iterator-1];
         }
     }
 
@@ -418,7 +414,7 @@ var lightbox = {
         @param callback: callback function, will be called with:
                 callback(img, caption, ...)
         */
-        var img = image_loader(image.element(), this.get_image_width(image), this.get_img());
+        var img = image_loader(image, this.get_image_width(image), this.get_img());
         var lightbox = this;
         img.load(function() {
             var e = lightbox.element();
@@ -445,7 +441,7 @@ var lightbox = {
         if( this._state == 1 || this._state == 2 ) {
             // reload currently displayed image (probably in higher resolution)
             var image = this._image_iterator.current();
-            var img = image_loader(image.element(), this.get_image_width( image ));
+            var img = image_loader(image, this.get_image_width( image ));
             var lightbox = this;
             img.load(function() {
                 lightbox.get_img().replaceWith( $(this).attr('id', lightbox._img_id) );
@@ -790,7 +786,7 @@ function FrameContainer( page ) {
         });
 
         //$this._call_listeners('on_first_frame_added');
-        $this._call_listeners('on_frame_added');
+        $this._call_listeners('on_frame_added', this);
 
         $this.append(); //async
     });
@@ -802,9 +798,9 @@ FrameContainer.prototype.on_frame_added = function( listener ) {
     this._listeners['on_frame_added'].push( listener );
 }
 
-FrameContainer.prototype._call_listeners = function( event ) {
+FrameContainer.prototype._call_listeners = function( event, parameters ) {
     for( listener in this._listeners[event] ) {
-        this._listeners[event][listener]();
+        this._listeners[event][listener].apply(this, parameters);
     }
 }
 
@@ -823,7 +819,7 @@ FrameContainer.prototype.append = function() {
             $this._first--;
             newframe_left.insert_into( $this.element() ).hide();
             $this.frame[ $this._current-1 ] = newframe_left;
-            $this._call_listeners('on_frame_added');
+            $this._call_listeners('on_frame_added', newframe_left);
         });
     }
     // right
@@ -833,7 +829,7 @@ FrameContainer.prototype.append = function() {
             $this._last++;
             newframe_right.insert_into( $this.element() ).hide();
             $this.frame[ $this._current+1 ] = newframe_right;
-            $this._call_listeners('on_frame_added');
+            $this._call_listeners('on_frame_added', newframe_right);
         }, function() {
             $this._max_page = ($this._max_page == null || $this._current < $this._max_page)? $this._current : $this._max_page;
         });
@@ -971,6 +967,7 @@ function Viewer( element ) {
         throw "Error: Tried to initialize a Viewer object with a non viewer element.";
     }
     this._images = [];
+    this.sizes = this._e.data('size') || [];
 
     var images = this._e.find('.image');
     var queue = new function_queue();
@@ -979,7 +976,7 @@ function Viewer( element ) {
     images.each( function() {
         var image_element = $(this);
         // create image element
-        var image = new Image( image_element )
+        var image = new Image( image_element, $this )
         $this._images.push( image ); //store in view
 
         var show = function(image) {
@@ -1074,7 +1071,7 @@ Iterator.prototype.clone = function() {
 }
 
 //// IMAGE
-function Image( element ) {
+function Image( element, viewer ) {
     // check and store html element
     var image = $(element);
     if( !image.hasClass('image') ) {
@@ -1086,7 +1083,9 @@ function Image( element ) {
     this._img_name = image.attr('id');
     this._img_ext = image.data('ext') || "";
     this.ratio = undefined;
+    this.sizes = image.data('size') || [];
     this.caption = new Caption( image.find('div.caption') );
+    this.viewer = viewer;
 
     // show caption on hover
     var $caption = this.caption;
@@ -1101,7 +1100,7 @@ function Image( element ) {
 
 Image.prototype.load = function( onload ) {
     // load image
-    this._img = image_loader(this._e, this.get_width());
+    this._img = image_loader(this, this.get_width());
     var $this = this;
     this._img.load( function() {
         // store the aspect ratio
@@ -1130,7 +1129,7 @@ Image.prototype.get_width = function() { //_get_image_width
 
 Image.prototype.reload = function() {
     var old_img = this._img;
-    this._img = image_loader(this._e, this.get_width());
+    this._img = image_loader(this, this.get_width());
     var $this = this;
     this._img.load(function() {
         // store the aspect ratio

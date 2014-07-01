@@ -51,10 +51,11 @@ $(function() {
     tram(the_lightbox).add('opacity 0.412s ease-in-out')
                       .add('background 0.176s ease-in-out');
 
+    var loader = $('<div class="loader">')
+
     // while lightbox is loading
     the_lightbox.on('load_lightbox_start.pho', function(e) {
         // highlight image and show loader on it
-        loader = $('<div class="loader">');
         e.image.element().tram().add('opacity 0.7s ease-out').start({'opacity': 0.6 });
         e.image.element().prepend(loader);
         tram(loader).add('opacity 0.7s ease-out').set({'opacity': 0 }).start({'opacity': 0.6 });
@@ -63,12 +64,12 @@ $(function() {
     });
 
     // restore image, that has/should have been loaded
-    var restore_loading_image = function() {
+    var restore_loading_image = function(e) {
         // make opaque remove loader
-        $('.image').tram(function() {
+        e.image.element().tram(function() {
             this.set({'opacity':1})
         })
-        .find('.loader:first').remove();
+        loader.remove();
     }
 
     // cancel loading of lightbox
@@ -84,7 +85,7 @@ $(function() {
         restore['frame_container_display'] = frame_container.css('display');
         frame_container.css({'display': 'none'});
 
-        restore_loading_image.apply(this)
+        restore_loading_image.call(this, e);
 
         // unhide image
         lightbox.get_img().show();
@@ -110,29 +111,33 @@ $(function() {
         });
     });
 
+    var loader_container = $('<div class="loader_container"><div class="loader"></div>');
+    var ghost = null;
+
     // transition when moving to next/prev image in lightbox
     the_lightbox.on('move_lightbox_start.pho', function(e) {
         // the old image
         var img = lightbox.get_img();
 
         //show loader
-        loader = $('<div class="loader_container"><div class="loader"></div>');
-        loader.tram().add('opacity 0.276s ease-in-out 0.112s').set({'opacity':0});
-        img.after( loader );
-        loader.tram().start({'opacity':0.6})
-
+        loader_container.tram().add('opacity 0.276s ease-in-out 0.112s').set({'opacity':0});
+        img.after( loader_container );
+        loader_container.tram().start({'opacity':0.6})
 
         // create ghost overlay
+        // delete old ghost
+        if( ghost !== null ) {
+            ghost.remove();
+        }
         // cloning current image
-        new_img = img.clone();
+        ghost = img.clone();
         img.after(
             // force positioning above original image
-            new_img.css({'position':'absolute'})
-                 .addClass('ghost')
+            ghost.css({'position':'absolute'})
                  .offset( img.offset() )
         )
         // remove attribute after insert (removing it before didn't work)
-        new_img.removeAttr('id');
+        ghost.removeAttr('id');
     });
 
     // transition to another image in the lightbox
@@ -142,7 +147,7 @@ $(function() {
         // fade in new image
         tram(lightbox.get_img()).add('opacity 0.176s ease-out').set({'opacity':0, 'display':'block'}).start({'opacity':1});
         // fade out old image
-        tram($('img.ghost, .loader_container')).add('opacity 0.176s ease-out').start({'opacity':0}).then(function() {
+        tram(ghost.add(loader_container )).add('opacity 0.176s ease-out').start({'opacity':0}).then(function() {
             $(this.el).remove();
         });
     });
@@ -174,25 +179,34 @@ $(function() {
         $(this).tram().start({'opacity':0});
     });
 
+    var flat_loaders = [];
+
     // start loading an image
-    $('body').on('load_image_start.pho', '.image', function() {
+    $('body').on('load_image_start.pho', '.image', function(e) {
         // add a flat loader to the loading image, but only show first loader in page
-        $(this).append($('<div class="flat_loader"></div>').hide());
-        $('.flat_loader').first().show();
+        var flat_loader = $('<div class="flat_loader"></div>');
+        flat_loaders.push( flat_loader );
+        // only show loader of first element.
+        if( flat_loaders.length != 1 ) {
+            flat_loader.hide();
+        }
+        $(this).append( flat_loader );
     });
     // finished loading the image
     $('body').on('load_image_end.pho', '.image', function(e) {
         var image = e.image.element();
         var img = e.image.get_img();
         // remove floader
-        image.find('.flat_loader').remove();
+        flat_loaders.shift().remove();
         // insert image
-        tram(img).set({'opacity':0}); //todo: should not access ._img here
+        tram(img).set({'opacity':0});
         image.prepend(img);
         // fade in image
         tram(img).add('opacity 0.576s ease-out').start({'opacity':1});
         // show next loader
-        $('.flat_loader').first().show();
+        if( flat_loaders.length > 0 ) {
+            flat_loaders[0].show();
+        }
     });
 
     // set scrollTop animation
