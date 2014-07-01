@@ -46,7 +46,7 @@ $(function() {
         $('body').one('mousemove', arrow_hider);
     })
 
-    var the_lightbox = lightbox.get();
+    var the_lightbox = lightbox.element();
 
     tram(the_lightbox).add('opacity 0.412s ease-in-out')
                       .add('background 0.176s ease-in-out');
@@ -55,8 +55,8 @@ $(function() {
     the_lightbox.on('load_lightbox_start.pho', function(e) {
         // highlight image and show loader on it
         loader = $('<div class="loader">');
-        e.image.tram().add('opacity 0.7s ease-out').start({'opacity': 0.6 });
-        e.image.prepend(loader);
+        e.image.element().tram().add('opacity 0.7s ease-out').start({'opacity': 0.6 });
+        e.image.element().prepend(loader);
         tram(loader).add('opacity 0.7s ease-out').set({'opacity': 0 }).start({'opacity': 0.6 });
         // overlay: invisible lightbox
         tram(this).set({'opacity':0, 'display':'block'});
@@ -89,7 +89,7 @@ $(function() {
         // unhide image
         lightbox.get_img().show();
         // show lightbox
-        tram(this).set({'background': e.image.css('background-color'), 'top': 0 })
+        tram(this).set({'background': e.image.element().css('background-color'), 'top': 0 })
         .start({'opacity':1}).then( function() {
             tram(lightbox.navigate.get_close()).start({'opacity': 0.3}).wait(921).then({'opacity': 0});
         });
@@ -138,7 +138,7 @@ $(function() {
     // transition to another image in the lightbox
     the_lightbox.on('move_lightbox_end.pho', function(e) {
         // fade background color of lightbox
-        tram(this).start({'background': e.image.css('background-color'), 'top':0})
+        tram(this).start({'background': e.image.element().css('background-color'), 'top':0})
         // fade in new image
         tram(lightbox.get_img()).add('opacity 0.176s ease-out').set({'opacity':0, 'display':'block'}).start({'opacity':1});
         // fade out old image

@@ -258,6 +258,29 @@ function show_in_background( element ) {
     }
 }
 
+// Functions to perform a callback, once a process is finished
+// used to extend other objects with $.extend(Obj.prototype, new Done());
+function Done() {
+    this._Done_done = false;
+    this._Done_done_callback = null;
+}
+
+// callback when Object is finished loading
+Done.prototype.done = function( callback ) {
+    if( this._done ) {
+        callback();
+    } else {
+        this._Done_done_callback = callback;
+    }
+}
+
+Done.prototype._set_done = function() {
+    this._Done_done = true;
+    if( this._Done_done_callback !== null ) {
+        this._Done_done_callback();
+    }
+}
+
 //// INITIALIZATION
 
 //initialize when loaded
@@ -269,13 +292,16 @@ $(document).ready(function() {
   //initialize frames
   frameContainer = new FrameContainer( h[0] );
 
-  //trigger init event
-  $(document).trigger('init.pho');
+  // wait for frameContainer to load
+  frameContainer.done(function() {
+      //trigger init event
+      $(document).trigger('init.pho');
 
-  //reload images if window is resized
-  $(window).on("debouncedresize", function(e) {
-    lightbox.reload_image();
-    frameContainer.reload_images();
+      //reload images if window is resized
+      $(window).on("debouncedresize", function(e) {
+        lightbox.reload_image();
+        frameContainer.reload_images();
+      });
   });
 });
 
@@ -311,12 +337,15 @@ $(document).on('init.pho', function() {
           lightbox.navigate.hide();
       }
   });
+
+  // load lightbox if hash contains image id
+  var h = hash();
+  lightbox.toggle.apply( $("[id='"+h[1]+"']") );
 });
 
 var lightbox = {
     _restore: [],
-    _current_image: undefined, //html element (from frame) of currently displayed image
-    //TODO: Use the Viewer to find the images
+    _image_iterator: null, //iterator of images in current view
 
     //initialize values
     __init: function() {
@@ -324,12 +353,12 @@ var lightbox = {
         this._img_id = "pho-lightbox_img";
         this._img = 'img#' + this._img_id;
         this._caption = 'div#pho-lightbox_caption';
-        this._state = this.get().is(":visible")*2; // 0: invisible, 1: showing, 2: visible, 3: hiding
+        this._state = this.element().is(":visible")*2; // 0: invisible, 1: showing, 2: visible, 3: hiding
     },
 
     // initialize lightbox events
     init_events: function() {
-        var lb = this.get();
+        var lb = this.element();
         //opacity is set here because jquery makes it cross-browser
         lb.css({'opacity':'1'}).hide()
           .on($.getTapEvent(), this.hide);
@@ -340,17 +369,10 @@ var lightbox = {
         //initialize lightbox navigation
         $(this.navigate._right).on($.getTapEvent(), lightbox.navigate.move_event('right'));
         $(this.navigate._left).on($.getTapEvent(), lightbox.navigate.move_event('left'));
-
-        // wait for first frame to load to load lightbox from hash
-        var $this = this;
-        frameContainer.on_first_frame_added(function() {
-            var h = hash();
-            $this.toggle.apply( $("[id='"+h[1]+"']") );
-        })
     },
 
     // return lightbox element
-    get: function() {
+    element: function() {
         return $(this._lightbox);
     },
 
@@ -374,9 +396,9 @@ var lightbox = {
 
     //helper: return width that image will have in lightbox (approx.)
     get_image_width: function(image) {
-        //read the ratio from the data field, if not set, try to calculate.
-        var ratio = image.find('img').data('ratio');
-        ratio = ratio || image.width()/image.height()
+        //read the ratio from the image.
+        var ratio = image.ratio;
+        ratio = ratio || image.get_img().width()/image.get_img().height()
 
         var img = this.get_img();
         // detect: % or px value
@@ -396,20 +418,19 @@ var lightbox = {
         @param callback: callback function, will be called with:
                 callback(img, caption, ...)
         */
-        var image = $(image);
-        var img = image_loader(image, this.get_image_width(image), this.get_img());
+        var img = image_loader(image.element(), this.get_image_width(image), this.get_img());
         var lightbox = this;
         img.load(function() {
-            var e = lightbox.get();
+            var e = lightbox.element();
 
             //insert image
             lightbox.get_img().replaceWith( $(this).attr('id', lightbox._img_id).hide() );
 
             //load caption
-            e.trigger({type:'lightbox_caption_load.pho', text:image.find('.caption span').text(), color:image.css('color')});
+            e.trigger({type:'lightbox_caption_load.pho', text:image.caption.text, color:image.element().css('color')});
 
             //update hash
-            hash( null, image.attr('id') );
+            hash( null, image.id() );
 
             // tootle lightbox navigation (hide if no more images)
             lightbox.navigate.toggle();
@@ -423,7 +444,8 @@ var lightbox = {
         // only if lightbox is visible or showing.
         if( this._state == 1 || this._state == 2 ) {
             // reload currently displayed image (probably in higher resolution)
-            var img = image_loader(this._current_image, this.get_image_width(this._current_image));
+            var image = this._image_iterator.current();
+            var img = image_loader(image.element(), this.get_image_width( image ));
             var lightbox = this;
             img.load(function() {
                 lightbox.get_img().replaceWith( $(this).attr('id', lightbox._img_id) );
@@ -438,23 +460,27 @@ var lightbox = {
         }
         lightbox._state = 1; //showing
 
-        var image = $(this);
-        lightbox._current_image = image; //store current image for later usage.
+        // get Image object from image element
+        lightbox._image_iterator = frameContainer.get_current_frame().viewer.image_iterator();
+        lightbox._image_iterator.set_current( $(this).attr('id') );
+        var image = lightbox._image_iterator.current();
+        //var image = $(this);
+        //lightbox._current_image = image; //store current image for later usage.
 
         lightbox._load(image, function() {
             // cancel, if state is not 'showing' anymore
             if( lightbox._state != 1) {
-                lightbox.get().trigger({type:'load_lightbox_cancel.pho', image:image});
+                lightbox.element().trigger({type:'load_lightbox_cancel.pho', image:image});
                 return;
             }
 
             //finish animation
-            lightbox.get().trigger({type:'load_lightbox_end.pho', image:image});
+            lightbox.element().trigger({type:'load_lightbox_end.pho', image:image});
             lightbox._state = 2; //visible
         });
 
         //start animation
-        lightbox.get().trigger({type:'load_lightbox_start.pho', image:image});
+        lightbox.element().trigger({type:'load_lightbox_start.pho', image:image});
     },
 
     navigate: {
@@ -483,8 +509,8 @@ var lightbox = {
 
         toggle: function() {
             //# show of hide navigation depending on if there is a previous/next image
-            $(this._left + ', '+ this._arrow_left).toggle( !lightbox.navigate._hidden && lightbox._current_image && lightbox._current_image.prevAll('.image').length != 0 );
-            $(this._right + ', '+ this._arrow_right).toggle( !lightbox.navigate._hidden && lightbox._current_image && lightbox._current_image.nextAll('.image').length != 0 );
+            $(this._left + ', '+ this._arrow_left).toggle( !lightbox.navigate._hidden && lightbox._image_iterator.has_prev() );
+            $(this._right + ', '+ this._arrow_right).toggle( !lightbox.navigate._hidden && lightbox._image_iterator.has_next() );
         },
 
         move_event: function(to) {
@@ -507,16 +533,17 @@ var lightbox = {
             // hash function (history back)
             if( to == 'hash' ) {
                 var h = hash();
+                var image = lightbox._image_iterator.current();
 
                 //do nothing if lightbox is not visible, or image from hash matches displayed image (current)
-                if( lightbox._state!=2 || !h[1] || h[1] == lightbox._current_image.attr('id') ) {
+                if( lightbox._state!=2 || !h[1] || h[1] == image.id() ) {
                     return;
                 }
 
                 // move left or right depending on hash value
-                if( h[1] == lightbox._current_image.prevAll('.image').first().attr('id') ) {
+                if( h[1] == lightbox._image_iterator.clone().prev().id() ) {
                     to = 'left';
-                } else if( h[1] == lightbox._current_image.nextAll('.image').first().attr('id') ) {
+                } else if( h[1] == lightbox._image_iterator.clone().next().id() ) {
                     to = 'right';
                 } else {
                     location.reload();
@@ -526,23 +553,17 @@ var lightbox = {
 
             // get new image to be displayed
             var to_image; //init with empty jquery obj
-            if( to == 'left' ) {
-                to_image = lightbox._current_image.prevAll('.image').first();
-            } else if( 'right' ) {
-                to_image = lightbox._current_image.nextAll('.image').first();
-            }
-
-            // this function should not be called, if no image exists at direction to move to
-            if( !to_image || to_image.length == 0 ) {
+            if( to == 'left' && lightbox._image_iterator.has_prev() ) {
+                to_image = lightbox._image_iterator.prev();
+            } else if( to == 'right' && lightbox._image_iterator.has_next() ) {
+                to_image = lightbox._image_iterator.next();
+            } else {
                 //throw "Warning: Tried to move to inexistant image in lightbox.navigate.";
                 //ignore
                 return;
             }
 
             $(lightbox._lightbox).trigger({type:'move_lightbox_start.pho', to:to});
-
-            // set new current image
-            lightbox._current_image = to_image;
 
             // start an event for the transition to the new image --> animation.js
             img = lightbox._load(to_image, function(img) {
@@ -750,7 +771,7 @@ function FrameContainer( page ) {
 
     // event listeners
     this._listeners = {
-        'on_first_frame_added': [],
+        //'on_first_frame_added': [],
         'on_frame_added': []
     };
 
@@ -764,19 +785,21 @@ function FrameContainer( page ) {
         this.insert_into( container );
         $this.frame[ page ] = this;
 
-        $this._call_listeners('on_first_frame_added');
+        frame.done(function() {
+            $this._set_done();
+        });
+
+        //$this._call_listeners('on_first_frame_added');
         $this._call_listeners('on_frame_added');
 
-        $this.append();
+        $this.append(); //async
     });
 }
 
+$.extend(FrameContainer.prototype, new Done());
+
 FrameContainer.prototype.on_frame_added = function( listener ) {
     this._listeners['on_frame_added'].push( listener );
-}
-
-FrameContainer.prototype.on_first_frame_added = function( listener ) {
-    this._listeners['on_first_frame_added'].push( listener );
 }
 
 FrameContainer.prototype._call_listeners = function( event ) {
@@ -881,10 +904,15 @@ function Frame( id ) {
         $this._e.css( {'background-color': viewer.css('background-color') } );
 
         $this.viewer = new Viewer( viewer );
+
+        $this._set_done();
     });
 
     return this;
 }
+
+// add callback functionality
+$.extend(Frame.prototype, new Done());
 
 Frame.prototype._id = "pho-frame";
 Frame.prototype._page_id = "pho-page";
@@ -960,7 +988,7 @@ function Viewer( element ) {
         queue.put(show);
 
         image_element.trigger('load_image_start.pho');
-    
+
         image.load( function() {
             queue.ex(show, [this]);
         } );
@@ -979,6 +1007,72 @@ Viewer.prototype.reload_images= function() {
     }
 }
 
+// return an image iterator
+Viewer.prototype.image_iterator = function() {
+    return new Iterator(this._images);
+}
+
+/// Iterator
+
+function Iterator( array_obj ) {
+    this._array = array_obj.slice();
+    this._ids = $.map( this._array, function(a) {
+        return a.id();
+    });
+    this._current = -1;
+}
+
+// return next image
+Iterator.prototype.next = function() {
+    this._current++;
+    if( this._current >= this._array.length ) {
+        this._current = this._array.length;
+        return false;
+    } else {
+        return this._array[this._current];
+    }
+}
+
+// return current image
+Iterator.prototype.current = function() {
+    if( this._current >= this._array.length || this._current < 0 ) {
+        return false;
+    } else {
+        return this._array[this._current];
+    }
+}
+
+// return previous image
+Iterator.prototype.prev = function() {
+    this._current--;
+    if( this._current < 0 ) {
+        this._current = -1;
+        return false;
+    } else {
+        return this._array[this._current];
+    }
+}
+
+Iterator.prototype.has_next = function() {
+    return this._current < this._array.length - 1;
+}
+
+Iterator.prototype.has_prev = function() {
+    return this._current > 0;
+}
+
+Iterator.prototype.set_current = function( id ) {
+    this._current = this._ids.indexOf(id);
+}
+
+Iterator.prototype.get = function( id ) {
+    return this._array[ this._ids.indexOf(id) ];
+}
+
+Iterator.prototype.clone = function() {
+    return new Iterator( this._array );
+}
+
 //// IMAGE
 function Image( element ) {
     // check and store html element
@@ -991,7 +1085,7 @@ function Image( element ) {
     // extract properties
     this._img_name = image.attr('id');
     this._img_ext = image.data('ext') || "";
-    this._ratio = undefined;
+    this.ratio = undefined;
     this.caption = new Caption( image.find('div.caption') );
 
     // show caption on hover
@@ -1011,7 +1105,7 @@ Image.prototype.load = function( onload ) {
     var $this = this;
     this._img.load( function() {
         // store the aspect ratio
-        $this._ratio = this.width/this.height;
+        $this.ratio = this.width/this.height;
 
         onload.apply($this);
     });
@@ -1040,26 +1134,42 @@ Image.prototype.reload = function() {
     var $this = this;
     this._img.load(function() {
         // store the aspect ratio
-        $this._ratio = this.width/this.height;
+        $this.ratio = this.width/this.height;
 
         old_img.replaceWith( $(this) );
     })
 }
 
+//return unique identifer of image element
+Image.prototype.id = function() {
+    return this._img_name;
+}
+
 //// CAPTION
 
 function Caption( element ) {
+    if( !element || !element.length ) {
+        this.text = '';
+        this._e = false;
+        return this;
+    }
     this._e = element;
+    if( !element.hasClass('caption') ) {
+        throw "Error: Tried to initialize a Caption object with a non caption element.";
+    }
+    this.text = this._e.find('span').text();
 
     //enable external links
     element.find('[class^=ref_]').attr('target','_blank');
+
+    return this;
 }
 
 Caption.prototype.show = function() {
-    this._e.trigger('show_caption.pho');
+    if( this._e ) this._e.trigger('show_caption.pho');
 }
 
 Caption.prototype.hide = function() {
-    this._e.trigger('hide_caption.pho');
+    if( this._e ) this._e.trigger('hide_caption.pho');
 }
 
