@@ -531,8 +531,8 @@ var lightbox = {
                 var h = hash();
                 var image = lightbox._image_iterator.current();
 
-                //do nothing if lightbox is not visible, or image from hash matches displayed image (current)
-                if( lightbox._state!=2 || !h[1] || h[1] == image.id() ) {
+                //do nothing if image from hash matches displayed image (current)
+                if( !h[1] || h[1] == image.id() ) {
                     return;
                 }
 
@@ -1067,7 +1067,9 @@ Iterator.prototype.get = function( id ) {
 }
 
 Iterator.prototype.clone = function() {
-    return new Iterator( this._array );
+    var clone = new Iterator( this._array );
+    clone._current = this._current;
+    return clone;
 }
 
 //// IMAGE
