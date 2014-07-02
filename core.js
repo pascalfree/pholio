@@ -896,7 +896,7 @@ function Frame( id ) {
         }
         $this._set_exists( true );
 
-        var viewer = $this._e.children('div.viewer');
+        var viewer = $this._e.children('.viewer, .pho-viewer');
         $this._e.css( {'background-color': viewer.css('background-color') } );
 
         $this.viewer = new Viewer( viewer );
@@ -963,13 +963,13 @@ Frame.prototype._set_exists = function(value) {
 //// VIEWER
 function Viewer( element ) {
     this._e = $(element);
-    if( !this._e.hasClass('viewer') ) {
+    if( !this._e.hasClass('viewer') && !this._e.hasClass('pho-viewer') ) {
         throw "Error: Tried to initialize a Viewer object with a non viewer element.";
     }
     this._images = [];
     this.sizes = this._e.data('size') || [];
 
-    var images = this._e.find('.image');
+    var images = this._e.find('.image, .pho-image');
     var queue = new function_queue();
     //load images
     var $this = this;
@@ -1076,7 +1076,7 @@ Iterator.prototype.clone = function() {
 function Image( element, viewer ) {
     // check and store html element
     var image = $(element);
-    if( !image.hasClass('image') ) {
+    if( !image.hasClass('image') && !image.hasClass('pho-image') ) {
         throw "Error: Tried to initialize an Image object with a non image element.";
     }
     this._e = image;
@@ -1086,7 +1086,7 @@ function Image( element, viewer ) {
     this._img_ext = image.data('ext') || "";
     this.ratio = undefined;
     this.sizes = image.data('size') || [];
-    this.caption = new Caption( image.find('div.caption') );
+    this.caption = new Caption( image.find('.caption, .pho-caption') );
     this.viewer = viewer;
 
     // show caption on hover
@@ -1155,7 +1155,7 @@ function Caption( element ) {
         return this;
     }
     this._e = element;
-    if( !element.hasClass('caption') ) {
+    if( !element.hasClass('caption') && !element.hasClass('pho-caption') ) {
         throw "Error: Tried to initialize a Caption object with a non caption element.";
     }
     this.text = this._e.find('span').text();

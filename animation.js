@@ -77,29 +77,36 @@ $(function() {
 
     // show lightbox when it's loaded
     the_lightbox.on('load_lightbox_end.pho', function(e) {
-        // Hide frame container and scrollbar
+        // remember the scroll position for later
         restore['scrollTop'] = $(document).scrollTop();
-        // set background color of body to bg color of frame. Otherwise it will flash white.
-        $('body, html').css({'background-color': frameContainer.get_current_frame().element().css('background-color'), 'overflow': 'hidden'});
-        var frame_container = frameContainer.element();
-        restore['frame_container_display'] = frame_container.css('display');
-        frame_container.css({'display': 'none'});
+        // Hide the scrollbar without any content jumping around
+        var width_with_scrollbar = $(window).width();
+        var frame = frameContainer.get_current_frame().element();
+        $('body, html').css({'overflow': 'hidden'});
+        frame.css({'width': width_with_scrollbar/$(window).width()*100+'%'});
 
         restore_loading_image.call(this, e);
 
         // unhide image
         lightbox.get_img().show();
         // show lightbox
-        tram(this).set({'background': e.image.element().css('background-color'), 'top': 0 })
+        tram(this).set({'background': e.image.element().css('background-color'), 'top': restore['scrollTop']  })
         .start({'opacity':1}).then( function() {
             tram(lightbox.navigate.get_close()).start({'opacity': 0.3}).wait(921).then({'opacity': 0});
+            // put lightbox to top (after having full opacity), because mobile would allow to scroll up otherwise
+            tram(lightbox.element()).set({'top': 0});
+
+            var frame_container = frameContainer.element();
+            restore['frame_container_display'] = frame_container.css('display');
+            // hide container, because mobile will not care about the 'overflow hidden' of the body.
+            frame_container.css({'display': 'none'});
         });
+
     })
 
     // hide lightbox
     the_lightbox.on('hide_lightbox.pho', function() {
         // restore frames
-        $('body, html').css({'overflow': ''});
         frameContainer.element().css({ 'display': restore.frame_container_display });
         tram(document).set({ 'scrollTop': restore.scrollTop });
         tram(this).set({ 'top': restore.scrollTop });
@@ -108,6 +115,10 @@ $(function() {
         tram(this).start({'opacity':0}).then(function() {
             this.set({'display':'none'});
             $(this).find('img').attr('src', '');
+
+            //re-enable scrollbar
+            $('body, html').css({'overflow': ''});
+            frameContainer.get_current_frame().element().css({ 'width': '100%' });
         });
     });
 
@@ -170,19 +181,19 @@ $(function() {
     });
 
     // show caption
-    $('body').on('show_caption.pho', '.caption', function() {
+    $('body').on('show_caption.pho', '.caption, .pho-caption', function() {
         $(this).tram().add('opacity 0.321s ease-in-out').start({'opacity': 0.5});
     });
 
     // hide caption
-    $('body').on('hide_caption.pho', '.caption', function() {
+    $('body').on('hide_caption.pho', '.caption, .pho-caption', function() {
         $(this).tram().start({'opacity':0});
     });
 
     var flat_loaders = [];
 
     // start loading an image
-    $('body').on('load_image_start.pho', '.image', function(e) {
+    $('body').on('load_image_start.pho', '.image, .pho-image', function(e) {
         // add a flat loader to the loading image, but only show first loader in page
         var flat_loader = $('<div class="flat_loader"></div>');
         flat_loaders.push( flat_loader );
@@ -193,7 +204,7 @@ $(function() {
         $(this).append( flat_loader );
     });
     // finished loading the image
-    $('body').on('load_image_end.pho', '.image', function(e) {
+    $('body').on('load_image_end.pho', '.image, .pho-image', function(e) {
         var image = e.image.element();
         var img = e.image.get_img();
         // remove floader

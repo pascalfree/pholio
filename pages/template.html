@@ -1,59 +1,68 @@
-<div class="viewer" style="width: 820px; background-color:#000; margin: 20px auto;">
+<style type="text/css">
+  #this_viewer {
+    width: 100%;
+    max-width: 1080px;
+    background-color: white;
+    margin: 20px auto;
+  }
 
-<!-- 
-  This is the template file for a frame. It shows some of the css classes for the caption.
+  #this_viewer .pho-image{
+    margin: 1%;
+    padding: 0;
+  }
+</style>
+
+
+<div class="pho-viewer" id="this_viewer">
+
+<!--
+  This is the template file for a page. It shows some of the css classes for the caption.
   The template also contains sizes of the pictures for some arrangements. v means vertical picture and h horizontal.
-  The sizes are meant to fit into a frame width of 800px and may need modification for other frame sizes.
-  
-  An empty frame consists of the div element above (and the closing one in the end). Always include them.
-  The background color of the frame can be adjusted in the top div.
-  A footer may be included as well, see end of the file.
-  Frames are numbered: 0.html, 1.html, etc. the default starting frame can be set in the config.js file.
-  
-  general anatomy of a picture:
-  <div class="image" id="<<path to full size picture visible in lightbox>>" alt="<<path to preview picture>>" style="
-    height: <<height of preview picture>>;
-    width: <<width of preview picture>>;
-    background-color: <<background color, visible before picture has loaded, also sets bg-color of lightbox>>;
-    color: <<color of the caption text in the lightbox (default white)>>;
-    <<additional css>>
-">
-   <div class="caption <<css classes formatting the caption>>" style="<<optional, may be formatet inline>>"><span><<Caption text>></span></div>
- </div>
- 
- Caption css classes:
- *  caption_left: show caption on the left side (default is right)
- *  caption_top: show caption on top (default is bottom)
- *  text_black: use black text (default is white)
- *  white: use white background for caption (default is black)
- 
- The Caption may also contain external links, as shown in the "1 landscape" template
+  The sizes relative, such that they scale automatically on smaller screens.
+
+  A page must have one parent element: The viewer. It must have the class `pho-viewer` (see above)
+  The background color of the entire page will be adjusted to match the viewer background color (regardless of the size of the viewer).
+  Pages are numbered: 0.html, 1.html, etc. the default starting page can be set in the config.js file.
+
+  It is possible to style the page as desired. The `style` block above shows, how css can be applied for the entire page.
+  Make sure to only target child elements of the viewer, because the css defined on this page will be applied on every page by the browser.
+
+  The page content and styling is only limited by your imagination (and the HTML5 specification).
+  This template contains some examples how the images could be arranged on the page.
+
+  Images have a special architecture, such that pholio can detect them and make them interactive.
+  See `doc/pages.md` for a full documentation on that architecture.
+
+    Caption css classes:
+    *  caption_left: show caption on the left side (default is right)
+    *  caption_top: show caption on top (default is bottom)
+    *  text_black: use black text (default is white)
+    *  white: use white background for caption (default is black)
+
+ The Caption may also contain external links, as shown in the "1 landscape" template and in the documentation
 -->
 
 
-<!-- 
+<!--
   1 landscape
-  
+
   hhhhhhh
   hhh1hhh
   hhhhhhh
 -->
 
-  <div class="image" id="0/full_size_picture1" data-ext=".JPG" style="
-      width: 98%;
-      background-color: black;
-      margin: 1%;
-      padding: 0;
-      float: left;
-  ">
-     <div class="caption caption_left caption_top"><span>Caption and additional external links</span>
-        <a class="ref_500px" alt="500px" title="500px" href="http://500px.com/photo/xxxxxxx"></a>
-        <a class="ref_flickr" alt="flickr" title="flickr" href="http://www.flickr.com/photos/xxxx/xxxxxxxxx/"></a>
-     </div>
-   </div>
+    <div class="pho-image" id="0/full_size_picture1" data-ext=".JPG" data-size="[1058]" style="
+        width: 98%;
+        background-color: black;
+    ">
+        <div class="pho-caption caption_left caption_top"><span>Caption and additional external links</span>
+            <a class="ref_500px" alt="500px" title="500px" href="http://500px.com/photo/xxxxxxx"></a>
+            <a class="ref_flickr" alt="flickr" title="flickr" href="http://www.flickr.com/photos/xxxx/xxxxxxxxx/"></a>
+        </div>
+    </div>
 
 
-<!-- 
+<!--
   2 landscape
 
   hhhhhhh  hhhhhhh
@@ -61,25 +70,23 @@
   hhhhhhh  hhhhhhh
 -->
 
-  <div class="image" id="0/full_size_picture1" data-ext=".JPG"  style="
-      width: 48%;
-      background-color: #111;
-      margin: 1%;
-      float: left;
-  ">
-     <div class="caption caption_left"><span>Caption on bottom left corner</span></div>
-   </div>
+    <div class="pho-linear_horizontal">
+        <div class="pho-image" id="0/full_size_picture1" data-ext=".JPG" data-size="[518]" style="
+            width: 48%;
+            background-color: #111;
+        ">
+            <div class="pho-caption caption_left"><span>Caption on bottom left corner</span></div>
+        </div>
 
-  <div class="image" id="0/full_size_picture2" data-ext=".JPG"  style="
-      width: 48%;
-      background-color: #111;
-      margin: 1%;
-      float: left;
-  ">
-     <div class="caption"><span>Caption</span></div>
-  </div>
+        <div class="pho-image" id="0/full_size_picture2" data-ext=".JPG" data-size="[518]" style="
+            width: 48%;
+            background-color: #111;
+        ">
+            <div class="pho-caption"><span>Caption</span></div>
+        </div>
+    </div>
 
-<!-- 
+<!--
   1 portrait - 1 landscape
   may be swaped
 
@@ -88,26 +95,23 @@
   vvv  hhhhhhh
 -->
 
-  <div class="image" id="0/full_size_picture1" data-ext=".JPG"  style="
-      width: 29.5%;
-      background-color: black;
-      margin: 1%;
-      float: left;
-  ">
-     <div class="caption caption_top"><span>Caption on top right corner, white text on black</span></div>
-   </div>
-   
-  <div class="image" id="0/full_size_picture2" data-ext=".JPG"  style="
-      width: 66.5%;
-      background-color: black;
-      margin: 1%;
-      padding: 0;
-      float: left;
-  ">
-     <div class="caption caption_left caption_top"><span>Caption on top left corner, white text on black</span></div>
-   </div>
+    <div class="pho-linear_horizontal">
+        <div class="pho-image" id="0/full_size_picture1" data-ext=".JPG" data-size="[319]" style="
+            width: 29.5%;
+            background-color: black;
+        ">
+            <div class="pho-caption caption_top"><span>Caption on top right corner, white text on black</span></div>
+        </div>
 
-<!-- 
+        <div class="pho-image" id="0/full_size_picture2" data-ext=".JPG" data-size="[718]" style="
+            width: 66.5%;
+            background-color: black;
+        ">
+            <div class="pho-caption caption_left caption_top"><span>Caption on top left corner, white text on black</span></div>
+        </div>
+    </div>
+
+<!--
   1 portrait - 2 landscape - inline
   may be swaped
 
@@ -116,113 +120,99 @@
   hhhhhhh  vvv  hhhhhhh
 -->
 
+    <div class="pho-linear_horizontal">
+        <div class="pho-image" id="0/full_size_picture1" data-ext=".JPG" data-size="[416]" style="
+            width: 38.5%;
+            background-color: black;
+        ">
+            <div class="pho-caption caption_left"><span>Caption on bottom left corner</span></div>
+        </div>
 
-  <div class="image" id="0/full_size_picture1" data-ext=".JPG"  style="
-      width: 38.5%;
-      background-color: black;
-      margin: 1%;
-      float: left;
-  ">
-     <div class="caption caption_left"><span>Caption on bottom left corner</span></div>
-   </div>
+        <div class="pho-image" id="0/full_size_picture2" data-ext=".JPG" data-size="[184]" style="
+            width: 17%;
+            background-color: black;
+        ">
+            <div class="pho-caption" style="font-size:12pt;"><span>Caption with custom font size</span></div>
+        </div>
 
-  <div class="image" id="0/full_size_picture2" data-ext=".JPG"  style="
-      width: 17%;
-      background-color: black;
-      margin: 1%;
-      float: left;
-  ">
-     <div class="caption" style="font-size:12pt;"><span>Caption with custom font size</span></div>
-   </div>
+        <div class="pho-image" id="0/full_size_picture3" data-ext=".JPG" data-size="[416]" style="
+            width: 38.5%;
+            background-color: black;
+        ">
+            <div class="pho-caption"><span>Caption</span></div>
+        </div>
+    </div>
 
-  <div class="image" id="0/full_size_picture3" data-ext=".JPG"  style="
-      width: 38.5%;
-      background-color: black;
-      margin: 1%;
-      float: left;
-  ">
-     <div class="caption"><span>Caption</span></div>
-  </div>
-
-<!-- 
+<!--
   1 portrait - 2 landscape
   may be swaped
 
   vvv  hh2hh
   vvv  hhhhh
-  v1v 
+  v1v
   vvv  hh3hh
-  vvv  hhhhh 
+  vvv  hhhhh
 -->
+    <div class="pho-linear_horizontal">
+        <div class="pho-image" id="0/full_size_picture1" data-ext=".JPG" style="
+            width: 45.8%;
+            background-color: white;
+        ">
+            <div class="pho-caption caption_left caption_top text_black white"><span>Caption on top left corner, black text on white</span></div>
+        </div>
 
-  <div class="image" id="0/full_size_picture1" data-ext=".JPG"  style="
-      width: 45.8%;
-      background-color: white;
-      margin: 1%;
-      padding: 0;
-      float: left;
-  ">
-    <div class="caption caption_left caption_top text_black white"><span>Caption on top left corner, black text on white</span></div>
-  </div>
+        <div class="pho-linear_vertical" style="width: 50.2%">
+            <div class="pho-image" id="0/full_size_picture2" data-ext=".JPG" data-size="[542]" style="
+                margin: 2%;
+                background-color: black;
+            ">
+                <div class="pho-caption text_black white"><span>Caption on bottom right corner, black on white</span></div>
+            </div>
 
-  <div class="image" id="0/full_size_picture2" data-ext=".JPG"  style="
-      width: 50.2%;
-      background-color: black;
-      margin: 1%;
-      float: left;
-  ">
-     <div class="caption text_black white"><span>Caption on bottom right corner, black on white</span></div>
-   </div>
-
-  <div class="image" id="0/full_size_picture3" data-ext=".JPG"  style="
-      width: 50.2%;
-      background-color: #e2e8f2;
-      margin: 1%;
-      float: left;
-  ">
-     <div class="caption text_black white"><span>Caption</span></div>
-  </div>
+            <div class="pho-image" id="0/full_size_picture3" data-ext=".JPG" data-size="[542]" style="
+                margin: 2%;
+                background-color: #e2e8f2;
+            ">
+                <div class="pho-caption text_black white"><span>Caption</span></div>
+            </div>
+        </div>
+    </div>
 
 
-<!-- 
-  3 portrait - inline
+<!--
+  3 portrait (or landscape) - inline
 
   vvv  vvv  vvv
   v1v  v2v  v3v
   vvv  vvv  vvv
 -->
 
-  <div class="image" id="0/full_size_picture1" data-ext=".JPG"  style="
-      width: 30%;
-      background-color: white;
-      margin: 1%;
-      padding: 0;
-      float: left;
-  ">
-    <div class="caption caption_left caption_top text_black white"><span>Caption on top left corner, black text on white</span></div>
-  </div>
+    <div class="pho-linear_horizontal">
+        <div class="pho-image" id="0/full_size_picture1" data-ext=".JPG" style="
+            width: 31%;
+            background-color: white;
+        ">
+            <div class="pho-caption caption_left caption_top text_black white"><span>Caption on top left corner, black text on white</span></div>
+        </div>
 
-  <div class="image" id="0/full_size_picture2" data-ext=".JPG"  style="
-      width: 30%;
-      background-color: black;
-      margin: 1%;
-      float: left;
-  ">
-     <div class="caption text_black white"><span>Caption on bottom right corner, black on white</span></div>
-   </div>
+        <div class="pho-image" id="0/full_size_picture2" data-ext=".JPG" style="
+            width: 31%;
+            background-color: black;
+        ">
+            <div class="pho-caption text_black white"><span>Caption on bottom right corner, black on white</span></div>
+        </div>
 
-  <div class="image" id="0/full_size_picture3" data-ext=".JPG"  style="
-      width: 30%;
-      background-color: #e2e8f2;
-      margin: 1%;
-      float: left;
-  ">
-     <div class="caption text_black white"><span>Caption</span></div>
-  </div>
+        <div class="pho-image" id="0/full_size_picture3" data-ext=".JPG" style="
+            width: 31%;
+            background-color: #e2e8f2;
+        ">
+            <div class="pho-caption text_black white"><span>Caption</span></div>
+        </div>
+    </div>
 
 <!-- A footer for some text or links -->
 
   <div class="copyright" style="color: #999">&copy; Copyright</div>
 
-<!-- include this </div> in your frame -->
+<!-- include this </div> in your page -->
 </div>
