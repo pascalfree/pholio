@@ -423,7 +423,11 @@ var lightbox = {
             lightbox.get_img().replaceWith( $(this).attr('id', lightbox._img_id).hide() );
 
             //load caption
-            e.trigger({type:'lightbox_caption_load.pho', text:image.caption.text, color:image.element().css('color')});
+            e.trigger({type:'lightbox_caption_load.pho',
+                text: image.caption.text,
+                color: image.element().css('color'),
+                background: image.element().css('background-color')
+            });
 
             //update hash
             hash( null, image.id() );

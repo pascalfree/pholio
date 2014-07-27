@@ -36,17 +36,22 @@ div#pho-lightbox {
 /*not img#pho-lightbox_img because during transition there are multiple img in the lightbox (ghost)*/
 div#pho-lightbox img {
   margin: 0 auto;
-  max-width: 96%;
-  max-height: 88%;
+  max-width: 100%;
+  max-height: 100%;
   display: block;
 }
 
 div#pho-lightbox_caption{
-  margin-top: 0;
-  font-size: 16pt;
-  font-family: verdana, arial, sans;
-  height: 10%;
-  line-height: 300%;
+    position: absolute;
+    top: 0;
+    left: 0;
+    font-size: 18pt;
+    font-family: verdana,arial,sans;
+    line-height: 300%;
+    text-align: center;
+    width: 100%;
+    /*background-color: rgba(0, 0, 0, 0.5);*/
+    /*background-image: linear-gradient(to bottom, rgba(0,0,0,0.7) 0%, rgba(0,0,0,0.2) 100%);*/
 }
 
 @media (max-width: 630px), (max-height: 500px) {

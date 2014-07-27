@@ -9,6 +9,33 @@ $.fn.tram = function (fnc) {
     }
 }
 
+// get rgb color values from a hex or rgb(a) string
+  // inspired by http://stackoverflow.com/questions/6805740/jquery-colour-to-rgba
+function getColor(s) {
+    var patt;
+    var base = 10;
+    // short hex
+    if( s.substr(0,1) == '#' && s.length == 4 ) {
+        patt = /^#([\da-fA-F])([\da-fA-F])([\da-fA-F])$/;
+        base = 16; //base 16 = hex
+    // hex
+    } else if( s.substr(0,1) == '#' ) {
+        patt = /^#([\da-fA-F]{2})([\da-fA-F]{2})([\da-fA-F]{2})$/;
+        base = 16;
+    // rgba
+    } else if( s.substr(0,4) == 'rgba' ) {
+        patt = /^rgba\(([\d]{1,3})\, ?([\d]{1,3})\, ?([\d]{1,3})\, ?([\d\.]*)\)$/;
+    // rgb
+    } else if( s.substr(0,3) == 'rgb' ) {
+        patt = /^rgb\(([\d]{1,3})\, ?([\d]{1,3})\, ?([\d]{1,3})\)$/;
+    }
+    var m = patt.exec(s);
+    return {r: parseInt( m[1], base),
+            g: parseInt( m[2], base),
+            b: parseInt( m[3], base),
+            a: parseFloat( m[4]||1 )};
+}
+
 $(function() {
     var restore = [];
 
@@ -20,8 +47,8 @@ $(function() {
     }).tram().add('opacity 0.312s ease-in-out');
 
     //only show navigation arrows on mousemove
-    // do the same for the close icon in the lightbox
-    var autohidden = tram( navigate.get_arrow().add(lightbox.navigate.get_arrow()).add(lightbox.navigate.get_close()) )
+    // do the same for the close icon and caption in the lightbox
+    var autohidden = tram( navigate.get_arrow().add(lightbox.navigate.get_arrow()).add(lightbox.navigate.get_close()).add(lightbox.get_caption()) )
                          .set({ 'opacity': 0, 'display': 'block' }).add('opacity 0.276s ease-in-out');
     var arrow_timer;
     var arrow_hider = function() {
@@ -35,8 +62,8 @@ $(function() {
         }, 1764) // 1.764 second delay (why not?)
     }
     $('body').one('mousemove', arrow_hider)
-    // do not hide arrows, if mouse is hovering the navigator area
-    navigate.get().add(lightbox.navigate.get()).hover( function() {
+    // do not hide arrows, if mouse is hovering the navigator area (or the caption)
+    navigate.get().add(lightbox.navigate.get()).add(lightbox.get_caption()).hover( function() {
         //disable hiding after mousemove
         $('body').off('mousemove', arrow_hider);
         clearTimeout(arrow_timer);
@@ -50,6 +77,7 @@ $(function() {
 
     tram(the_lightbox).add('opacity 0.412s ease-in-out')
                       .add('background 0.176s ease-in-out');
+    tram(lightbox.get_caption()).add('background 0.176s ease-in-out');
 
     var loader = $('<div class="loader">')
 
@@ -166,17 +194,15 @@ $(function() {
     // load caption of lightbox
     the_lightbox.on('lightbox_caption_load.pho', function(e) {
         if( e.text == '' ) {
-            // if there is no caption, give away space
-            var c = lightbox.get_caption();
-            if( !restore['lightbox_height'] ) {
-                restore['lightbox_height'] = c.css('height');
-            }
-            c.css({'height':'5%'}).text('');
+            // if there is no caption, hide it
+            lightbox.get_caption().hide();
         } else {
+            // find background-color and make it transparent (0.5)
+            var c = getColor(e.background);
+            var color = 'rgba('+ c.r +','+ c.g +','+ c.b +',0.5)';
             // display captions
-            lightbox.get_caption().height( restore['lightbox_height'] )
-                .text( e.text ).css({'color': e.color });
-            restore['lightbox_height'] = null;
+            lightbox.get_caption().show()
+                .text( e.text ).css({'color': e.color , 'background-color': color });
         }
     });
 
@@ -222,20 +248,20 @@ $(function() {
 
     // set scrollTop animation
     var html_body = $('body, html'); //body for chrome, html for firefox
-    tram(html_body).add('scroll-top 0.761s ease-out')
+    tram(html_body).add('scroll-top 0.561s ease-out')
     html_body.attr('style',''); // workaround: remove style applied by tram (would hide the entire body)
 
     // move frame to left
     frameContainer.element().on('move_left.pho',function(e) {
         // animate
-        tram(e.from.element()).add('left 0.761s ease-out').set({'left':'0%'}).start({'left':'100%'}).then(function() {
+        tram(e.from.element()).add('left 0.561s ease-out').set({'left':'0%'}).start({'left':'100%'}).then(function() {
             this.set({'display': 'none'});
         })
 
         //set document background (yes it's necessary!)
         var to = e.to.element();
         $('body, html').css({'background-color': to.css('background-color')});
-        tram(to).add('left 0.761s ease-out').set({'left':'-100%', 'display':'block'}).start({'left':'0%'}).then(function() {
+        tram(to).add('left 0.561s ease-out').set({'left':'-100%', 'display':'block'}).start({'left':'0%'}).then(function() {
             to.focus();
         });
 
@@ -249,14 +275,14 @@ $(function() {
     // move frame to right
     frameContainer.element().on('move_right.pho',function(e) {
         // animate
-        tram(e.from.element()).add('left 0.761s ease-out').set({'left':'0%'}).start({'left':'-100%'}).then(function() {
+        tram(e.from.element()).add('left 0.561s ease-out').set({'left':'0%'}).start({'left':'-100%'}).then(function() {
             this.set({'display': 'none'});
         })
 
         //set document background (yes it's necessary!)
         var to = e.to.element();
         $('body, html').css({'background-color': to.css('background-color')});
-        tram(to).add('left 0.761s ease-out').set({'left':'100%', 'display':'block'}).start({'left':'0%'}).then(function() {
+        tram(to).add('left 0.561s ease-out').set({'left':'100%', 'display':'block'}).start({'left':'0%'}).then(function() {
             to.focus();
         });
 
