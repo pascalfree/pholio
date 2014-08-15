@@ -440,6 +440,14 @@ var lightbox = {
         return img;
     },
 
+    /**
+     * preloads next image, such that it will already be cached when it is used
+     * @param image: image object to preload
+     */
+    preload_image: function(image) {
+        image_loader(image, this.get_image_width(image));
+    },
+
     reload_image: function() {
         // only if lightbox is visible or showing.
         if( this._state == 1 || this._state == 2 ) {
@@ -478,6 +486,14 @@ var lightbox = {
             lightbox.element().trigger({type:'load_lightbox_end.pho', image:image});
             lightbox._state = 2; //visible
         });
+
+        // preload next and previous image
+        if( lightbox._image_iterator.has_prev() ) {
+            lightbox.preload_image( lightbox._image_iterator.clone().prev() );
+        }
+        if( lightbox._image_iterator.has_next()  ) {
+            lightbox.preload_image( lightbox._image_iterator.clone().next() );
+        }
 
         //start animation
         lightbox.element().trigger({type:'load_lightbox_start.pho', image:image});
@@ -569,6 +585,13 @@ var lightbox = {
             img = lightbox._load(to_image, function(img) {
                 $(lightbox._lightbox).trigger({type:'move_lightbox_end.pho', image:to_image, img:img, to:to});
             });
+
+            //preload next image
+            if( to == 'left' && lightbox._image_iterator.has_prev() ) {
+                lightbox.preload_image( lightbox._image_iterator.clone().prev() );
+            } else if( to == 'right' && lightbox._image_iterator.has_next()  ) {
+                lightbox.preload_image( lightbox._image_iterator.clone().next() );
+            }
         },
 
         // hide navigation
