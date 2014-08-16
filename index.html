@@ -6,14 +6,18 @@
         <title>Pholio</title>
         <meta charset="utf-8">
         <meta name="viewport" content="width=device-width, initial-scale=1, minimum-scale=1">
-        <link rel="stylesheet" href="index.css" type="text/css">
+        <script src="config.js"></script>
+        <script>
+            document.write('<link rel="stylesheet" href="themes/' + config.THEME + '/index.css" type="text/css">');
+        </script>
         <script src="lib/jquery-1.11.1.min.js"></script>
         <script src="lib/jquery.mobile-events.min.js"></script>
         <script src="lib/jquery.debouncedresize.js"></script>
         <script src="lib/tram-min.js"></script>
-        <script src="config.js"></script>
         <script src="core.js"></script>
-        <script src="animation.js"></script>
+        <script>
+            document.write('<script src="themes/' + config.THEME + '/view.js"><' + '/script>');
+        </script>
     </head>
 
     <body>
