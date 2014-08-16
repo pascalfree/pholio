@@ -1019,7 +1019,19 @@ function Viewer( element ) {
     });
 
     //make images clickable
-    images.on($.getTapEvent(), lightbox.show );
+    images.on($.getTapEvent(), function() {
+        // blur before showing lightbox
+        lightbox.show.apply( $(this).blur() );
+     });
+    //make selectable by keyboard
+    images.each(function( i ) {
+        $(this).attr('tabindex', i+1);
+    });
+    images.on('keypress', function(e) {
+        if( e.which == 13 ) { //Enter key
+            lightbox.show.apply( $(this) );
+        }
+    });
 
     return this;
 }
