@@ -288,11 +288,11 @@ div.pho-navigation {
   cursor: pointer;
 }
 
-div.pho-n_left {
+div.pho-n_prev {
   left: 0;
 }
 
-div.pho-n_right {
+div.pho-n_next {
   right: 0;  /*adjusted in jquery*/
 }
 
@@ -303,12 +303,12 @@ div.pho-arrow {
   width: 20px;
 }
 
-div.pho-a_right {
+div.pho-a_next {
   background-image: url('res/arrow_right.png');
   right: 10px; /*adjusted in jquery*/
 }
 
-div.pho-a_left {
+div.pho-a_prev {
   background-image: url('res/arrow_left.png');
   left: 10px;
 }

@@ -66,11 +66,6 @@ hash._normalize = function(h) {
   return h;
 }
 
-// returns true if a single picture is viewed
-function is_full_view() {
-  return hash()[1] != undefined;
-}
-
 /**
  *  image_loader: loads the smallest available image larger or equal to the given size
  *  @param image: an Image object //TODO: document these
@@ -119,8 +114,8 @@ function image_loader(image, size, current) {
   }
 
   var size_iterator = 0;
-  var img_url = image._img_name;
-  var img_ext = image._img_ext;
+  var img_url = image.get_name();
+  var img_ext = image.get_ext();
   var img = $('<img alt="'+ img_url +'">');
 
   // abort, if the current img is the same as the new image.
@@ -290,7 +285,9 @@ $(document).ready(function() {
 
   // wait for frameContainer to load
   frameContainer.done(function() {
-      //trigger init event
+      //frameContainer is ready
+      $(document).trigger('init_frameContainer.pho');
+      // initialize remaining components
       $(document).trigger('init.pho');
 
       //reload images if window is resized
@@ -305,26 +302,13 @@ $(document).ready(function() {
 
 //initialize lightbox
 $(document).on('init.pho', function() {
-  lightbox.init_events();
+  lightbox.__init();
 
-   //initialize keyboard shortcuts
-  $('body').on('keydown', function(e) {
-      if( 27 == e.keyCode ) { // esc
-          lightbox.hide();
-      }
-  });
+  //trigger lightbox init event
+  lightbox.element().trigger('init_lightbox.pho');
 
   //init onhashchange
   $(window).on('hashchange', lightbox.navigate.move_event('hash'));
-
-  //initialize keyboard shortcuts
-  $('body').on('keydown', function(e) {
-      if( 37 == e.keyCode ) { // left
-          lightbox.navigate.move('left');
-      } else if( 39 == e.keyCode ) { // right
-          lightbox.navigate.move('right');
-      }
-  });
 
   // switch to touch mode
   $(window).one('touchstart', function() {
@@ -342,44 +326,27 @@ $(document).on('init.pho', function() {
 var lightbox = {
     _restore: [],
     _image_iterator: null, //iterator of images in current view
+    _img_id: 'pho-lightbox_img',
 
     //initialize values
     __init: function() {
-        this._lightbox = "div#pho-lightbox";
-        this._img_id = "pho-lightbox_img";
-        this._img = 'img#' + this._img_id;
-        this._caption = 'div#pho-lightbox_caption';
+        this._e = $( lightbox.select('lightbox') );
         this._state = this.element().is(":visible")*2; // 0: invisible, 1: showing, 2: visible, 3: hiding
-    },
-
-    // initialize lightbox events
-    init_events: function() {
-        var lb = this.element();
-        //opacity is set here because jquery makes it cross-browser
-        lb.css({'opacity':'1'}).hide()
-          .on($.getTapEvent(), this.hide);
-        //initialize swipe gesture in lightbox
-        lb.on('swipeleft', this.navigate.move_event('right'))
-          .on('swiperight', this.navigate.move_event('left'));
-
-        //initialize lightbox navigation
-        $(this.navigate._right).on($.getTapEvent(), lightbox.navigate.move_event('right'));
-        $(this.navigate._left).on($.getTapEvent(), lightbox.navigate.move_event('left'));
     },
 
     // return lightbox element
     element: function() {
-        return $(this._lightbox);
+        return this._e;
     },
 
     // return img element of lightbox
     get_img: function() {
-        return $(this._img);
+        return $( lightbox.select('img') );
     },
 
     // return lightbox caption element
     get_caption: function() {
-        return $(this._caption);
+        return $( lightbox.select('caption') );
     },
 
     _extract_css_size: function(string, abs_size) {
@@ -398,8 +365,8 @@ var lightbox = {
 
         var img = this.get_img();
         // detect: % or px value
-        var max_height = this._extract_css_size( img.css('max-height'), $(window).height() );
-        var max_width = this._extract_css_size( img.css('max-width'), $(window).width() );
+        var max_height = this._extract_css_size( img.css('max-height')||'100%', $(window).height() );
+        var max_width = this._extract_css_size( img.css('max-width')||'100%', $(window).width() );
         // max is wider than image
         if( max_width/max_height > ratio ) {
             return max_height*ratio;
@@ -469,7 +436,7 @@ var lightbox = {
         lightbox._state = 1; //showing
 
         // get Image object from image element
-        lightbox._image_iterator = frameContainer.get_current_frame().viewer.image_iterator();
+        lightbox._image_iterator = frameContainer.get_frame( $(this).closest('.pho-frame') ).viewer.image_iterator();
         lightbox._image_iterator.set_current( $(this).attr('id') );
         var image = lightbox._image_iterator.current();
         //var image = $(this);
@@ -502,35 +469,31 @@ var lightbox = {
     navigate: {
         //# navigation inside the lightbox
         _hidden: false,
-        _left: 'div#pho-lightbox_navigation_left',
-        _right: 'div#pho-lightbox_navigation_right',
-        _arrow_left: 'div#pho-lightbox_navigation_arrow_left',
-        _arrow_right: 'div#pho-lightbox_navigation_arrow_right',
-        _close: 'div#pho-lightbox_close',
 
         // return navigation elements
         get: function() {
-            return $(this._left + ', ' + this._right);
+            return $( this.select('navigation') );
         },
 
         // return navigation arrows
         get_arrow: function() {
-            return $(this._arrow_left + ', ' + this._arrow_right);
+            return $( this.select('arrow') );
         },
 
         // return close element
         get_close: function() {
-            return $(this._close);
+            return $( this.select('close') );
         },
 
         toggle: function() {
             //# show of hide navigation depending on if there is a previous/next image
-            $(this._left + ', '+ this._arrow_left).toggle( !lightbox.navigate._hidden && lightbox._image_iterator.has_prev() );
-            $(this._right + ', '+ this._arrow_right).toggle( !lightbox.navigate._hidden && lightbox._image_iterator.has_next() );
+            $( this.select('navigation_prev') + ', '+ this.select('arrow_prev') ).toggle( !lightbox.navigate._hidden && lightbox._image_iterator.has_prev() );
+            $( this.select('navigation_next') + ', '+ this.select('arrow_next') ).toggle( !lightbox.navigate._hidden && lightbox._image_iterator.has_next() );
         },
 
         move_event: function(to) {
             return function(e) {
+                e.preventDefault();
                 e.stopPropagation();
                 return lightbox.navigate.move(to);
             }
@@ -538,8 +501,8 @@ var lightbox = {
 
         move: function(to) {
             /*# display previous or next image
-            @param to: 'left', 'right' or 'hash'.
-                       'hash' will try to identify a left or right action from the location hash, and apply it.
+            @param to: 'prev', 'next' or 'hash'.
+                       'hash' will try to identify a prev or next action from the location hash, and apply it.
             */
             //skip if lightbox is not visible
             if( lightbox._state != 2 ) {
@@ -556,11 +519,11 @@ var lightbox = {
                     return;
                 }
 
-                // move left or right depending on hash value
+                // move prev or next depending on hash value
                 if( h[1] == lightbox._image_iterator.clone().prev().id() ) {
-                    to = 'left';
+                    to = 'prev';
                 } else if( h[1] == lightbox._image_iterator.clone().next().id() ) {
-                    to = 'right';
+                    to = 'next';
                 } else {
                     location.reload();
                     return;
@@ -569,9 +532,9 @@ var lightbox = {
 
             // get new image to be displayed
             var to_image; //init with empty jquery obj
-            if( to == 'left' && lightbox._image_iterator.has_prev() ) {
+            if( to == 'prev' && lightbox._image_iterator.has_prev() ) {
                 to_image = lightbox._image_iterator.prev();
-            } else if( to == 'right' && lightbox._image_iterator.has_next() ) {
+            } else if( to == 'next' && lightbox._image_iterator.has_next() ) {
                 to_image = lightbox._image_iterator.next();
             } else {
                 //throw "Warning: Tried to move to inexistant image in lightbox.navigate.";
@@ -579,17 +542,17 @@ var lightbox = {
                 return;
             }
 
-            $(lightbox._lightbox).trigger({type:'move_lightbox_start.pho', to:to});
+            lightbox._e.trigger({type:'move_lightbox_start.pho', to:to});
 
             // start an event for the transition to the new image --> animation.js
             img = lightbox._load(to_image, function(img) {
-                $(lightbox._lightbox).trigger({type:'move_lightbox_end.pho', image:to_image, img:img, to:to});
+                lightbox._e.trigger({type:'move_lightbox_end.pho', image:to_image, img:img, to:to});
             });
 
             //preload next image
-            if( to == 'left' && lightbox._image_iterator.has_prev() ) {
+            if( to == 'prev' && lightbox._image_iterator.has_prev() ) {
                 lightbox.preload_image( lightbox._image_iterator.clone().prev() );
-            } else if( to == 'right' && lightbox._image_iterator.has_next()  ) {
+            } else if( to == 'next' && lightbox._image_iterator.has_next()  ) {
                 lightbox.preload_image( lightbox._image_iterator.clone().next() );
             }
         },
@@ -598,8 +561,27 @@ var lightbox = {
         hide: function() {
             lightbox.navigate._hidden = true;
             lightbox.navigate.toggle();
+        },
+        
+        // return css selector for navigation elements
+        select: function( type ) {
+            switch(type) {
+                case 'navigation':
+                    return 'div#pho-lightbox_navigation_prev, div#pho-lightbox_navigation_next';
+                case 'navigation_next':
+                    return 'div#pho-lightbox_navigation_next';
+                case 'navigation_prev':
+                    return 'div#pho-lightbox_navigation_prev';
+                case 'arrow':
+                    return 'div#pho-lightbox_navigation_arrow_prev, div#pho-lightbox_navigation_arrow_next';
+                case 'arrow_next':
+                    return 'div#pho-lightbox_navigation_arrow_next';
+                case 'arrow_prev':
+                    return 'div#pho-lightbox_navigation_arrow_prev';
+                case 'close':
+                    return 'div#pho-lightbox_close';
+            }
         }
-
     },
 
   hide: function(e) {
@@ -609,12 +591,12 @@ var lightbox = {
     }
     lightbox._state = 3; //hiding
 
-    $(lightbox._lightbox).trigger('hide_lightbox.pho');
+    lightbox._e.trigger('hide_lightbox.pho');
 
     //update hash
     hash( null, "" );
 
-    $(lightbox._lightbox).promise().done(function() {
+    lightbox._e.promise().done(function() {
         // mark invisible, if has been hiding
         if( lightbox._state == 3 ) {
             lightbox._state = 0; //invisible
@@ -630,10 +612,23 @@ var lightbox = {
     } else if( image.length ) { //fix: only show lightbox if image is set (length > 0)
         lightbox.show.apply(image);
     }
-  }
-}
+  },
 
-lightbox.__init();
+  is_visible: function() {
+    return lightbox._state != 0;
+  },
+  
+    select: function( type ) {
+        switch( type ) {
+            case 'lightbox':
+                return 'div#pho-lightbox';
+            case 'img':
+                return 'img#' + lightbox._img_id;
+            case 'caption':
+                return 'div#pho-lightbox_caption';
+        }
+    }
+}
 
 //// NAVIGATION
 
@@ -643,12 +638,9 @@ $(document).on('init.pho', function() {
   $(window).on('hashchange', navigate.move_event('hash'));
 
   //initialize navigation action
-  navigate.init_events();
   navigate.toggle();
 
-  //initialize swipe gesture
-  $('body').on('swipeleft', navigate.move_event('right'))
-           .on('swiperight', navigate.move_event('left'));
+  $('body').trigger('init_navigate');
 
   //for small screens: hide navigation, swipe instead
   $(window).one('touchstart', function() {
@@ -660,47 +652,22 @@ $(document).on('init.pho', function() {
           navigate.init_touch_footer();
       }
   });
-
-  //initialize keyboard shortcuts
-  $('body').on('keydown', function(e) {
-      if( 37 == e.keyCode ) { // left
-          navigate.move('left');
-      } else if( 39 == e.keyCode ) { // right
-          navigate.move('right');
-      }
-  });
 });
 
 var navigate = {
-    _navigation_left: 'div#pho-navigation_left',
-    _navigation_right: 'div#pho-navigation_right',
-    _arrow_left: 'div#pho-navigation_arrow_left',
-    _arrow_right: 'div#pho-navigation_arrow_right',
-    _touch_footer: 'div#pho-touch_footer',
-
     // return navigation elements
     get: function() {
-        return $(this._navigation_left + ', ' + this._navigation_right);
+        return $( this.select('navigation') );
     },
 
     // return navigation arrows
     get_arrow: function() {
-        return $(this._arrow_left + ', ' + this._arrow_right);
+        return $( this.select('arrow') );
     },
 
     // return touch footer element
     get_touch_footer: function() {
-        return $(this._touch_footer);
-    },
-
-    init_events: function() {
-        $(this._navigation_right).on($.getTapEvent(), navigate.move_event('right'));
-        $(this._navigation_left).on($.getTapEvent(), navigate.move_event('left'));
-
-        var $this = this;
-        frameContainer.on_frame_added( function() {
-            $this.toggle();
-        });
+        return $( this.select('touch_footer') );
     },
 
   toggle: function() {
@@ -708,17 +675,16 @@ var navigate = {
     var page = frameContainer.get_page();
 
     var ret = new Array;
-    ret['right'] = frameContainer.has_page( page + 1 );
-    ret['left'] = frameContainer.has_page( page - 1 );
+    ret['next'] = frameContainer.has_page( page + 1 );
+    ret['prev'] = frameContainer.has_page( page - 1 );
 
     //hide/show navigation
     // hide on touch devices
     if(html.hasOwnProperty('touch') && html.touch) {
-      $(this._navigation_right + ', ' + this._arrow_right).hide();
-      $(this._navigation_left + ', ' + this._arrow_left).hide();
+      $( this.select('arrow') + ', ' + this.select('navigation') ).hide();
     } else {
-      $(this._navigation_right + ', ' + this._arrow_right).toggle(ret['right']);
-      $(this._navigation_left + ', ' + this._arrow_left).toggle(ret['left']);
+      $( this.select('arrow_next') + ', ' + this.select('navigation_next') ).toggle(ret['next']);
+      $( this.select('arrow_prev') + ', ' + this.select('navigation_prev') ).toggle(ret['prev']);
     }
 
     return ret;
@@ -735,7 +701,7 @@ var navigate = {
 
       navigate.init_touch_footer(false); //hide touch footer
 
-      if( is_full_view() ) { return; } // is viewing single picture
+      if( lightbox.is_visible() ) { return; } // lightbox is open
 
       var current = frameContainer.get_page();
       var new_page = navigate['_'+to](current);
@@ -757,27 +723,59 @@ var navigate = {
     lightbox.toggle.apply( $("[id='"+h[1]+"']") );
   },
 
-  _left: function(current) {
+  _prev: function(current) {
     return current-1;
   },
 
-  _right: function(current) {
+  _next: function(current) {
     return current+1;
   },
 
+  // change page
+  goto: function( to_page, quiet ) {
+      //change current page
+      frameContainer.set_page( to_page, quiet );
+
+      //update hash
+      hash( frameContainer.get_page() );
+
+      navigate.toggle();
+  },
+
   init_touch_footer: function(enable) {
+    var touch_footer = this.get_touch_footer();
     if(!html.touch) {
-        $(this._touch_footer).trigger('hide_touch_footer.pho');
+        touch_footer.trigger('hide_touch_footer.pho');
         return;
     }
     enable = (enable===undefined)? true : enable;
 
     if(enable) {
-      $(this._touch_footer).trigger('show_touch_footer.pho');
+      touch_footer.trigger('show_touch_footer.pho');
     } else {
-      $(this._touch_footer).trigger('hide_touch_footer.pho');
+      touch_footer.trigger('hide_touch_footer.pho');
     }
-  }
+  },
+  
+    // return css selector for navigation elements
+    select: function( type ) {
+        switch(type) {
+            case 'navigation':
+                return 'div#pho-navigation_prev, div#pho-navigation_next';
+            case 'navigation_next':
+                return 'div#pho-navigation_next';
+            case 'navigation_prev':
+                return 'div#pho-navigation_prev';
+            case 'arrow':
+                return 'div#pho-navigation_arrow_prev, div#pho-navigation_arrow_next';
+            case 'arrow_next':
+                return 'div#pho-navigation_arrow_next';
+            case 'arrow_prev':
+                return 'div#pho-navigation_arrow_prev';
+            case 'touch_footer':
+                return 'div#pho-touch_footer';
+        }
+    }
 }
 
 //// FRAME CONTAINER
@@ -785,7 +783,7 @@ var navigate = {
 function FrameContainer( page ) {
     this._container = "div#pho-frame_container";
 
-    this.frame = [];
+    this._frame = [];
 
     this._current = null;
     this._last = null;
@@ -806,13 +804,12 @@ function FrameContainer( page ) {
         $this._current = page;
         $this._last = $this._first = page;
         this.insert_into( container );
-        $this.frame[ page ] = this;
+        $this._frame[ page ] = this;
 
         frame.done(function() {
             $this._set_done();
         });
 
-        //$this._call_listeners('on_first_frame_added');
         $this._call_listeners('on_frame_added', this);
 
         $this.append(); //async
@@ -839,24 +836,24 @@ FrameContainer.prototype.element = function() {
 // append new frames to the container, where necessary.
 FrameContainer.prototype.append = function() {
     var $this = this;
-    // left
+    // prev
     if( this._current == this._first && this._current != 0 ) {
-        var newframe_left = new Frame( this._current-1 );
-        newframe_left.exists(function() {
+        var newframe_prev = new Frame( this._current-1 );
+        newframe_prev.exists(function() {
             $this._first--;
-            newframe_left.insert_into( $this.element() ).hide();
-            $this.frame[ $this._current-1 ] = newframe_left;
-            $this._call_listeners('on_frame_added', newframe_left);
+            newframe_prev.insert_into( $this.element() ).hide();
+            $this._frame[ $this._current-1 ] = newframe_prev;
+            $this._call_listeners('on_frame_added', newframe_prev);
         });
     }
-    // right
+    // next
     if( this._current == this._last && this._current != this._max_page ) {
-        var newframe_right = new Frame( this._current+1 );
-        newframe_right.exists(function() {
+        var newframe_next = new Frame( this._current+1 );
+        newframe_next.exists(function() {
             $this._last++;
-            newframe_right.insert_into( $this.element() ).hide();
-            $this.frame[ $this._current+1 ] = newframe_right;
-            $this._call_listeners('on_frame_added', newframe_right);
+            newframe_next.insert_into( $this.element() ).hide();
+            $this._frame[ $this._current+1 ] = newframe_next;
+            $this._call_listeners('on_frame_added', newframe_next);
         }, function() {
             $this._max_page = ($this._max_page == null || $this._current < $this._max_page)? $this._current : $this._max_page;
         });
@@ -868,7 +865,13 @@ FrameContainer.prototype.get_page = function() {
 }
 
 FrameContainer.prototype.get_current_frame = function() {
-    return this.frame[this._current];
+    return this._frame[this._current];
+}
+
+// get a frame using a frame element
+FrameContainer.prototype.get_frame = function( frame_element ) {
+    var page = frame_element.attr('id').replace(/(pho-|)page/, '');
+    return this._frame[page];
 }
 
 // return true if the page `page` exists, false otherwise
@@ -877,40 +880,46 @@ FrameContainer.prototype.has_page = function( page ) {
 }
 
 // set the current page
-FrameContainer.prototype.set_page = function( page ) {
+FrameContainer.prototype.set_page = function( page, quiet ) {
+    quiet = quiet || false;
     // limit input
     page = Math.max(Math.min(page, this._last), this._first);
     // if nothing changes, do nothing
     if( this._current == page ) {
         return;
     }
-    var from = this.frame[this._current];
-    var direction = this._current > page ? 'left' : 'right';
+    var from = this._frame[this._current];
+    var direction = this._current > page ? 'prev' : 'next';
     this._current = page;
     // trigger page change event
-    frameContainer.element().trigger({type:'move_'+direction+'.pho', from:from, to:this.frame[page]});
+    frameContainer.element().trigger({type:'move_'+direction+'.pho', from:from, to:this._frame[page], quiet:quiet});
     // append new frames if necessary
     this.append();
 }
 
 FrameContainer.prototype.reload_images = function() {
     // reload images in all frame starting with the current frame
-    this.frame[this._current].reload_images();
+    this._frame[this._current].reload_images();
     for( var i = this._first ; i <= this._last ; ++i ) {
         if( i != this._current ) {
-            this.frame[i].reload_images();
+            this._frame[i].reload_images();
         }
     }
+}
+
+FrameContainer.prototype.frame_iterator = function() {
+    return new Iterator( this._frame );
 }
 
 //// FRAME
 function Frame( id ) {
     // create and store html element
-    this._e = $('<div id="' + this._page_id + id + '" class="' + this._id + '" tabindex="-1"></div>');
+    this._e = $('<div id="' + Frame._page_id + id + '" class="' + Frame._id + '" tabindex="-1"></div>');
     this.viewer;
     this._exists = null;
     this._exists_callback_true = null;
     this._exists_callback_false = null;
+    this._id = id;
 
     // load viewer
     if( id < 0 ) { return; } //don't load pages below 0
@@ -923,7 +932,7 @@ function Frame( id ) {
         }
         $this._set_exists( true );
 
-        var viewer = $this._e.children('.viewer, .pho-viewer');
+        var viewer = $this._e.children( Viewer.select() );
         $this._e.css( {'background-color': viewer.css('background-color') } );
 
         $this.viewer = new Viewer( viewer );
@@ -936,9 +945,6 @@ function Frame( id ) {
 
 // add callback functionality
 $.extend(Frame.prototype, new Done());
-
-Frame.prototype._id = "pho-frame";
-Frame.prototype._page_id = "pho-page";
 
 Frame.prototype.element = function() {
     return $(this._e);
@@ -971,8 +977,8 @@ Frame.prototype.exists = function(callback_true, callback_false) {
             callback_false();
         }
     } else {
-        this._exists_callback_true = callback_true;
-        this._exists_callback_false = callback_false;
+        this._exists_callback_true = callback_true||null;
+        this._exists_callback_false = callback_false||null;
     }
 }
 
@@ -983,6 +989,17 @@ Frame.prototype._set_exists = function(value) {
     } else if( !value && this._exists_callback_false !== null ) {
         (this._exists_callback_false)();
     }
+}
+
+Frame.prototype.get_page = Frame.prototype.id = function() {
+    return this._id;
+}
+
+Frame._id = "pho-frame";
+Frame._page_id = "pho-page";
+
+Frame.select = function() {
+    return '.' + Frame._id;
 }
 
 //// PAGE
@@ -996,7 +1013,7 @@ function Viewer( element ) {
     this._images = [];
     this.sizes = this._e.data('size') || [];
 
-    var images = this._e.find('.image, .pho-image');
+    var images = this._e.find( Image.select() );
     var queue = new function_queue();
     //load images
     var $this = this;
@@ -1018,20 +1035,7 @@ function Viewer( element ) {
         } );
     });
 
-    //make images clickable
-    images.on($.getTapEvent(), function() {
-        // blur before showing lightbox
-        lightbox.show.apply( $(this).blur() );
-     });
-    //make selectable by keyboard
-    images.each(function( i ) {
-        $(this).attr('tabindex', i+1);
-    });
-    images.on('keypress', function(e) {
-        if( e.which == 13 ) { //Enter key
-            lightbox.show.apply( $(this) );
-        }
-    });
+    element.trigger({type:'init_viewer.pho', images:images});
 
     return this;
 }
@@ -1048,12 +1052,21 @@ Viewer.prototype.image_iterator = function() {
     return new Iterator(this._images);
 }
 
+// return Viewer selector
+Viewer.select = function() {
+    return '.viewer, .pho-viewer';
+}
+
 /// Iterator
 
 function Iterator( array_obj ) {
-    this._array = array_obj.slice();
-    this._ids = $.map( this._array, function(a) {
-        return a.id();
+    this._ids = [];
+    $this = this;
+    this._array = $.map( array_obj.slice(), function(a) {
+        if( a ) {
+            $this._ids.push( a.id() );
+            return a;
+        }
     });
     this._current = -1;
 }
@@ -1125,7 +1138,7 @@ function Image( element, viewer ) {
     this._img_ext = image.data('ext') || "";
     this.ratio = undefined;
     this.sizes = image.data('size') || [];
-    this.caption = new Caption( image.find('.caption, .pho-caption') );
+    this.caption = new Caption( image.find( Caption.select() ) );
     this.viewer = viewer;
 
     // show caption on hover
@@ -1180,9 +1193,19 @@ Image.prototype.reload = function() {
     })
 }
 
-//return unique identifer of image element
-Image.prototype.id = function() {
+//return unique identifer (name) of image element
+Image.prototype.get_name = Image.prototype.id = function() {
     return this._img_name;
+}
+
+//return file extension of image
+Image.prototype.get_ext = function() {
+    return this._img_ext;
+}
+
+//return Image css selector
+Image.select = function() {
+    return '.image, .pho-image';
 }
 
 //// CAPTION
@@ -1211,5 +1234,9 @@ Caption.prototype.show = function() {
 
 Caption.prototype.hide = function() {
     if( this._e ) this._e.trigger('hide_caption.pho');
+}
+
+Caption.select = function() {
+    return '.caption, .pho-caption';
 }
 

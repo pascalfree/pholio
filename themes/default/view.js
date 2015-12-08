@@ -36,16 +36,9 @@ function getColor(s) {
             a: parseFloat( m[4]||1 )};
 }
 
+
+// init when document is ready
 $(function() {
-    var restore = [];
-
-    // initialize navigation animation
-    navigate.get().add(lightbox.navigate.get()).css({ opacity: 0 }).hover( function() {
-        tram(this).start({'opacity': 0.3 }).wait(4764).then({'opacity': 0 });
-    }, function() {
-        tram(this).start({'opacity': 0 })
-    }).tram().add('opacity 0.312s ease-in-out');
-
     //only show navigation arrows on mousemove
     // do the same for the close icon and caption in the lightbox
     var autohidden = tram( navigate.get_arrow().add(lightbox.navigate.get_arrow()).add(lightbox.navigate.get_close()).add(lightbox.get_caption()) )
@@ -72,17 +65,200 @@ $(function() {
         //reenable hiding after mousemove
         $('body').one('mousemove', arrow_hider);
     })
+    
+    // set scrollTop animation
+    var html_body = $('body, html'); //body for chrome, html for firefox
+    tram(html_body).add('scroll-top 0.561s ease-out')
+    html_body.attr('style',''); // workaround: remove style applied by tram (would hide the entire body)
+    
+    // CAPTION
+    // show caption
+    $(document).on('show_caption.pho', Caption.select(), function() {
+        $(this).tram().add('opacity 0.321s ease-in-out').start({'opacity': 0.5});
+    });
 
-    var the_lightbox = lightbox.element();
+    // hide caption
+    $(document).on('hide_caption.pho', Caption.select(), function() {
+        $(this).tram().start({'opacity':0});
+    });
 
-    tram(the_lightbox).add('opacity 0.412s ease-in-out')
-                      .add('background 0.176s ease-in-out');
+    var flat_loaders = [];
+
+    // IMAGE
+    // start loading an image
+    $(document).on('load_image_start.pho', Image.select(), function(e) {
+        // add a flat loader to the loading image, but only show first loader in page
+        var flat_loader = $('<div class="flat_loader"></div>');
+        flat_loaders.push( flat_loader );
+        // only show loader of first element.
+        if( flat_loaders.length != 1 ) {
+            flat_loader.hide();
+        }
+        $(this).append( flat_loader );
+    });
+    // finished loading the image
+    $(document).on('load_image_end.pho', Image.select(), function(e) {
+        var image = e.image.element();
+        var img = e.image.get_img();
+        // remove floader
+        flat_loaders.shift().remove();
+        // insert image
+        tram(img).set({'opacity':0});
+        image.prepend(img);
+        // fade in image
+        tram(img).add('opacity 0.576s ease-out').start({'opacity':1});
+        // show next loader
+        if( flat_loaders.length > 0 ) {
+            flat_loaders[0].show();
+        }
+    });
+});
+
+
+// initialize viewer
+$(document).on('init_viewer.pho', Viewer.select(), function(e) {
+    //make images clickable
+    e.images.on($.getTapEvent(), function() {
+        // blur before showing lightbox
+        lightbox.show.apply( $(this).blur() );
+    });
+    //make selectable by keyboard
+    e.images.each(function( i ) {
+        $(this).attr('tabindex', i+1);
+    });
+    e.images.on('keypress', function(e) {
+        if( e.which == 13 ) { //Enter key
+            lightbox.show.apply( $(this) );
+        }
+    });
+});
+
+
+// initialize frameContainer
+$(document).on('init_frameContainer.pho', function() {
+    // move frame to prev
+    frameContainer.element().on('move_prev.pho',function(e) {
+        // animate
+        tram(e.from.element()).add('left 0.561s ease-out').set({'left':'0%'}).start({'left':'100%'}).then(function() {
+            this.set({'display': 'none'});
+        })
+
+        //set document background (yes it's necessary!)
+        var to = e.to.element();
+        $('body, html').css({'background-color': to.css('background-color')});
+        tram(to).add('left 0.561s ease-out').set({'left':'-100%', 'display':'block'}).start({'left':'0%'}).then(function() {
+            to.focus();
+        });
+
+        //copy background color
+        var color = to.children('div.viewer').css('background-color');
+        to.css({'background-color':color});
+
+        tram($('body, html')).start({'scrollTop': 0});
+    })
+
+    // move frame to next
+    frameContainer.element().on('move_next.pho',function(e) {
+        // animate
+        tram(e.from.element()).add('left 0.561s ease-out').set({'left':'0%'}).start({'left':'-100%'}).then(function() {
+            this.set({'display': 'none'});
+        })
+
+        //set document background (yes it's necessary!)
+        var to = e.to.element();
+        $('body, html').css({'background-color': to.css('background-color')});
+        tram(to).add('left 0.561s ease-out').set({'left':'100%', 'display':'block'}).start({'left':'0%'}).then(function() {
+            to.focus();
+        });
+
+        //copy background color
+        var color = to.children('div.viewer').css('background-color');
+        to.css({'background-color':color});
+
+        tram($('body, html')).start({'scrollTop': 0});
+    });
+});
+
+
+// initialize navigator
+$(document).on('init_navigate.pho', function(e) {
+    //initialize swipe gesture
+    $('body').on('swipeleft', navigate.move_event('next'))
+        .on('swiperight', navigate.move_event('prev'));
+
+    //initialize keyboard shortcuts
+    $('body').on('keydown', function(e) {
+        var keyCode = e.keyCode || e.which;
+        if( 37 == keyCode ) { // left
+            navigate.move('prev');
+        } else if( 39 == keyCode ) { // right
+            navigate.move('next');
+        }
+    });
+
+    $( navigate.select('navigation_next') ).on($.getTapEvent(), navigate.move_event('next'));
+    $( navigate.select('navigation_prev') ).on($.getTapEvent(), navigate.move_event('prev'));
+
+    frameContainer.on_frame_added( function() {
+        navigate.toggle();
+    });
+
+    // initialize navigation animation
+    navigate.get().add(lightbox.navigate.get()).css({ opacity: 0 }).hover( function() {
+        tram(this).start({'opacity': 0.3 }).wait(4764).then({'opacity': 0 });
+    }, function() {
+        tram(this).start({'opacity': 0 })
+    }).tram().add('opacity 0.312s ease-in-out');
+    
+    // show/hide touch_footer
+    navigate.get_touch_footer().on('show_touch_footer.pho', function() {
+        tram(this).set({'opacity':0, 'display':'block'}).start({'opacity':0.7});
+        window.setTimeout(function() {
+            navigate.init_touch_footer(false);
+        }, 3000);
+    })
+    .on('hide_touch_footer.pho', function() {
+        tram(this).start({'opacity':0}).then({'display':'none'});
+    })
+    .tram().add('opacity 0.161s ease-in')
+});
+
+
+//initialize the lightbox
+$(document).on('init_lightbox.pho', lightbox.select('lightbox'), function() {
+    var restore = [];
+    var $this = $(this);
+
+    //initialize keyboard shortcuts
+    $('body').on('keydown', function(e) {
+        if( 27 == e.keyCode ) { // esc
+            lightbox.hide();
+        } else if( 37 == e.keyCode ) { // left
+            lightbox.navigate.move('prev');
+        } else if( 39 == e.keyCode ) { // right
+            lightbox.navigate.move('next');
+        }
+    });
+
+    //opacity is set here because jquery makes it cross-browser
+    $this.css({'opacity':'1'}).hide()
+        .on($.getTapEvent(), lightbox.hide);
+    //initialize swipe gesture in lightbox
+    $this.on('swipeleft', lightbox.navigate.move_event('next'))
+        .on('swiperight', lightbox.navigate.move_event('prev'));
+
+    //initialize lightbox navigation
+    $( lightbox.navigate.select('navigation_prev') ).on($.getTapEvent(), lightbox.navigate.move_event('prev'));
+    $( lightbox.navigate.select('navigation_next') ).on($.getTapEvent(), lightbox.navigate.move_event('next'));
+    
+    tram($this).add('opacity 0.412s ease-in-out')
+                  .add('background 0.176s ease-in-out');
     tram(lightbox.get_caption()).add('background 0.176s ease-in-out');
 
     var loader = $('<div class="loader">')
 
     // while lightbox is loading
-    the_lightbox.on('load_lightbox_start.pho', function(e) {
+    $this.on('load_lightbox_start.pho', function(e) {
         // highlight image and show loader on it
         e.image.element().tram().add('opacity 0.7s ease-out').start({'opacity': 0.6 });
         e.image.element().prepend(loader);
@@ -101,10 +277,10 @@ $(function() {
     }
 
     // cancel loading of lightbox
-    the_lightbox.on('load_lightbox_cancel.pho', restore_loading_image );
+    $this.on('load_lightbox_cancel.pho', restore_loading_image );
 
     // show lightbox when it's loaded
-    the_lightbox.on('load_lightbox_end.pho', function(e) {
+    $this.on('load_lightbox_end.pho', function(e) {
         // remember the scroll position for later
         restore['scrollTop'] = $(document).scrollTop();
         // Hide the scrollbar without any content jumping around
@@ -133,7 +309,7 @@ $(function() {
     })
 
     // hide lightbox
-    the_lightbox.on('hide_lightbox.pho', function() {
+    $this.on('hide_lightbox.pho', function() {
         // restore frames
         frameContainer.element().css({ 'display': restore.frame_container_display });
         tram(document).set({ 'scrollTop': restore.scrollTop });
@@ -154,7 +330,7 @@ $(function() {
     var ghost = null;
 
     // transition when moving to next/prev image in lightbox
-    the_lightbox.on('move_lightbox_start.pho', function(e) {
+    $this.on('move_lightbox_start.pho', function(e) {
         // the old image
         var img = lightbox.get_img();
 
@@ -180,7 +356,7 @@ $(function() {
     });
 
     // transition to another image in the lightbox
-    the_lightbox.on('move_lightbox_end.pho', function(e) {
+    $this.on('move_lightbox_end.pho', function(e) {
         // fade background color of lightbox
         tram(this).start({'background': e.image.element().css('background-color'), 'top':0})
         // fade in new image
@@ -192,7 +368,7 @@ $(function() {
     });
 
     // load caption of lightbox
-    the_lightbox.on('lightbox_caption_load.pho', function(e) {
+    $this.on('lightbox_caption_load.pho', function(e) {
         if( e.text == '' ) {
             // if there is no caption, hide it
             lightbox.get_caption().hide();
@@ -205,103 +381,4 @@ $(function() {
                 .text( e.text ).css({'color': e.color , 'background-color': color });
         }
     });
-
-    // show caption
-    $('body').on('show_caption.pho', '.caption, .pho-caption', function() {
-        $(this).tram().add('opacity 0.321s ease-in-out').start({'opacity': 0.5});
-    });
-
-    // hide caption
-    $('body').on('hide_caption.pho', '.caption, .pho-caption', function() {
-        $(this).tram().start({'opacity':0});
-    });
-
-    var flat_loaders = [];
-
-    // start loading an image
-    $('body').on('load_image_start.pho', '.image, .pho-image', function(e) {
-        // add a flat loader to the loading image, but only show first loader in page
-        var flat_loader = $('<div class="flat_loader"></div>');
-        flat_loaders.push( flat_loader );
-        // only show loader of first element.
-        if( flat_loaders.length != 1 ) {
-            flat_loader.hide();
-        }
-        $(this).append( flat_loader );
-    });
-    // finished loading the image
-    $('body').on('load_image_end.pho', '.image, .pho-image', function(e) {
-        var image = e.image.element();
-        var img = e.image.get_img();
-        // remove floader
-        flat_loaders.shift().remove();
-        // insert image
-        tram(img).set({'opacity':0});
-        image.prepend(img);
-        // fade in image
-        tram(img).add('opacity 0.576s ease-out').start({'opacity':1});
-        // show next loader
-        if( flat_loaders.length > 0 ) {
-            flat_loaders[0].show();
-        }
-    });
-
-    // set scrollTop animation
-    var html_body = $('body, html'); //body for chrome, html for firefox
-    tram(html_body).add('scroll-top 0.561s ease-out')
-    html_body.attr('style',''); // workaround: remove style applied by tram (would hide the entire body)
-
-    // move frame to left
-    frameContainer.element().on('move_left.pho',function(e) {
-        // animate
-        tram(e.from.element()).add('left 0.561s ease-out').set({'left':'0%'}).start({'left':'100%'}).then(function() {
-            this.set({'display': 'none'});
-        })
-
-        //set document background (yes it's necessary!)
-        var to = e.to.element();
-        $('body, html').css({'background-color': to.css('background-color')});
-        tram(to).add('left 0.561s ease-out').set({'left':'-100%', 'display':'block'}).start({'left':'0%'}).then(function() {
-            to.focus();
-        });
-
-        //copy background color
-        var color = to.children('div.viewer').css('background-color');
-        to.css({'background-color':color});
-
-        tram($('body, html')).start({'scrollTop': 0});
-    })
-
-    // move frame to right
-    frameContainer.element().on('move_right.pho',function(e) {
-        // animate
-        tram(e.from.element()).add('left 0.561s ease-out').set({'left':'0%'}).start({'left':'-100%'}).then(function() {
-            this.set({'display': 'none'});
-        })
-
-        //set document background (yes it's necessary!)
-        var to = e.to.element();
-        $('body, html').css({'background-color': to.css('background-color')});
-        tram(to).add('left 0.561s ease-out').set({'left':'100%', 'display':'block'}).start({'left':'0%'}).then(function() {
-            to.focus();
-        });
-
-        //copy background color
-        var color = to.children('div.viewer').css('background-color');
-        to.css({'background-color':color});
-
-        tram($('body, html')).start({'scrollTop': 0});
-    });
-
-    // show/hide touch_footer
-    navigate.get_touch_footer().on('show_touch_footer.pho', function() {
-        tram(this).set({'opacity':0, 'display':'block'}).start({'opacity':0.7});
-        window.setTimeout(function() {
-            navigate.init_touch_footer(false);
-        }, 3000);
-    })
-    .on('hide_touch_footer.pho', function() {
-        tram(this).start({'opacity':0}).then({'display':'none'});
-    })
-    .tram().add('opacity 0.161s ease-in')
 });
