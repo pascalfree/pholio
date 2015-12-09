@@ -74,7 +74,6 @@ hash._normalize = function(h) {
  *  @return: an img element on success and false, if no image was found (or is the same as the current image)
  */
 function image_loader(image, size, current) {
-  //image = $(image);
   image_loader.loaded_size = image_loader.loaded_size || {};
 
   // only load new images, larger than previously loaded images.
@@ -152,14 +151,14 @@ function image_loader(image, size, current) {
         }
     }
 
+  var proxy_img;
   var retry = function() {
     var n = next_name();
-    //img.off('error',retry);
     if( n ) {
       proxy_img = $('<img>').on('error',retry);
       proxy_img.on('load', apply_src).attr('src', config.PAGE_FOLDER+'/'+n);
     } else {
-      $('<img>').off('error',retry);
+      proxy_img.off('error',retry);
     }
   }
   retry();
@@ -1140,6 +1139,7 @@ function Image( element, viewer ) {
     this.sizes = image.data('size') || [];
     this.caption = new Caption( image.find( Caption.select() ) );
     this.viewer = viewer;
+    this.onload = 0; // 0 = did not even start loading
 
     // show caption on hover
     var $caption = this.caption;
@@ -1154,6 +1154,7 @@ function Image( element, viewer ) {
 
 Image.prototype.load = function( onload ) {
     // load image
+    this.onload = onload; // onload is a function = image is currently loading
     this._img = image_loader(this, this.get_width());
     var $this = this;
     this._img.load( function() {
@@ -1161,6 +1162,7 @@ Image.prototype.load = function( onload ) {
         $this.ratio = this.width/this.height;
 
         onload.apply($this);
+        this.onload = 1; // 1 = finished loading
     });
 }
 
@@ -1182,15 +1184,24 @@ Image.prototype.get_width = function() { //_get_image_width
 }
 
 Image.prototype.reload = function() {
+    if( 0 == this.onload ) return; //can not reload image, that has not started to load yet
+
     var old_img = this._img;
+    this._img.off();
     this._img = image_loader(this, this.get_width());
     var $this = this;
     this._img.load(function() {
         // store the aspect ratio
         $this.ratio = this.width/this.height;
 
-        old_img.replaceWith( $(this) );
-    })
+        // if reload happened before the original loading finished, the callback should be triggered now.
+        if("function" == typeof($this.onload)) {
+            $this.onload.apply($this);
+            $this.onload = 1;
+        } else {
+            old_img.replaceWith( $(this) ); //TODO: move this to view.js
+        }
+    });
 }
 
 //return unique identifer (name) of image element
