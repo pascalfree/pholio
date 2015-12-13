@@ -55,13 +55,6 @@ function sortFrames() {
     }
 }
 
-function focus_current_frame(element) {
-    //move focus to current frame (unless an image in the target view is currently focused)
-    if( element.find(':focus').filter( Image.select() ).length == 0 ) {
-        element.focus();
-    }
-}
-
 // scroll manager
 var scroll = {
     _animated: false,
@@ -75,8 +68,7 @@ var scroll = {
         this.listener(false);
         this._follow = element;
         var top = element.offset().top;
-        tram($('body, html')).set({'scrollTop': top});
-        focus_current_frame(element);
+        tram($(window)).set({'scrollTop': top});
         this.listener(true);
     },
 
@@ -90,7 +82,7 @@ var scroll = {
         var top = element.offset().top;
         this._animated = true;
         var $this = this;
-        tram($('body, html')).start({'scrollTop': top}).then(function() {
+        tram($('html,body')).start({'scrollTop': top}).then(function() { //FIX: $(window) can not be animated
             $this._animated = false;
             $this._follow = this._to;
             $this.listener(true);
@@ -110,9 +102,9 @@ var scroll = {
             return;
         }
         // add delta to current scroll position
-        var currentTop = $('html').scrollTop();
+        var currentTop = $(window).scrollTop();
         this.listener(false);
-        $('html, body').scrollTop( currentTop + delta );
+        $(window).scrollTop( currentTop + delta );
         this.listener(true);
         // if it has been animating, continue animation
         if( this._animated ) {
@@ -121,7 +113,6 @@ var scroll = {
     },
 
     listener: function( enable ) {
-        //TODO: BUG: onScroll is not listening if page started with the lightbox open
         $(window)[enable?'on':'off']('scroll', this.onScroll);
         if( !enable ) {
             window.clearTimeout(this._timeout);
@@ -133,10 +124,13 @@ var scroll = {
         scroll.listener(false);
         scroll._timeout = window.setTimeout(function() {
             //ignore if lightbox is showing
-            if( lightbox.is_visible() ) { return; }
+            if( lightbox.is_visible() ) { 
+                scroll.listener(true);
+                return;
+            }
 
             var semi_window = $(window).height()/2;
-            var top = $('html').scrollTop() + semi_window/2;
+            var top = $(window).scrollTop() + semi_window/2;
             // adjust current frame depending on scroll position
             while(true) {
                 var current_frame = frameContainer.get_current_frame().element();
@@ -196,7 +190,6 @@ $(function() {
     // set scrollTop animation
     var html_body = $('body, html'); //body for chrome, html for firefox
     tram(html_body).add('scroll-top 0.561s ease-out')
-    html_body.attr('style',''); // workaround: remove style applied by tram (would hide the entire body)
     
 
     // CAPTION
@@ -279,10 +272,6 @@ $(document).on('init_viewer.pho', Viewer.select(), function(e) {
 
 // initialize navigator
 $(document).on('init_navigate.pho', function(e) {
-    //initialize swipe gesture
-    $('body').on('swipeleft', navigate.move_event('prev'))
-        .on('swiperight', navigate.move_event('next'));
-
     //initialize keyboard shortcuts
     $('body').on('keydown', function(e) {
         var keyCode = e.keyCode || e.which;
@@ -344,6 +333,61 @@ $(document).on('init_lightbox.pho', lightbox.select('lightbox'), function() {
     $this.on('swipeleft', lightbox.navigate.move_event('next'))
         .on('swiperight', lightbox.navigate.move_event('prev'));
 
+    // pan image on touch, detect swipe
+    {
+        var ticking = false, ticker, tick = 1000/30;
+        var swipe_threshold = 20, blocked;
+        var tap_offset;
+        var lightbox_img;
+        var update_pan = function(touch_offset) {
+            return function() {
+                lightbox_img.set({'left': (touch_offset - tap_offset.x)*0.7});
+                ticking = false;
+            }
+        }
+        var on_tapmove = function(e, touch) {
+            if(!ticking && !blocked) {
+                ticker = window.setTimeout(update_pan( touch.offset.x ), tick);
+                ticking = true;
+            }
+        };
+        $this.on('tapstart', function(e, touch) {
+            tap_offset = touch.offset;
+            lightbox_img = tram(lightbox.select('img')).add('left 0.4s ease-out');
+            $(lightbox.select('img')).css({'position':'relative'});
+            blocked = false;
+            $(this).on('tapmove', on_tapmove);
+        })
+        .on('tapend', function(e, touch) {
+            $(this).off('tapmove');
+            window.clearTimeout( ticker );
+            ticking = false;
+
+            //detect a swipe
+            var swiped = false;
+            if( !blocked ) {
+                var offset_x = touch.offset.x - tap_offset.x;
+                var offset_y = touch.offset.y - tap_offset.y;
+                if( Math.abs(offset_x) > 1.5*Math.abs(offset_y) ) { //exclude mostly vertical swipes
+                    if( offset_x > swipe_threshold ) {
+                        swiped = lightbox.navigate.move('prev')
+                    }
+                    else if( offset_x < -swipe_threshold ) {
+                        swiped = lightbox.navigate.move('next')
+                    }
+                }
+            }
+
+            if( lightbox_img && !swiped ) lightbox_img.start({'left': 0 });
+        })
+        $this[0].addEventListener('touchstart', function(e) {
+            // Detect multi touch gestures and disable swipe in that case
+            if( blocked = e.touches.length > 1 ) {
+                if( lightbox_img ) lightbox_img.set({'left': 0 });
+            }
+        });
+    }
+
     //initialize lightbox navigation
     $( lightbox.navigate.select('navigation_next') ).on($.getTapEvent(), lightbox.navigate.move_event('next'));
     $( lightbox.navigate.select('navigation_prev') ).on($.getTapEvent(), lightbox.navigate.move_event('prev'));
@@ -380,7 +424,7 @@ $(document).on('init_lightbox.pho', lightbox.select('lightbox'), function() {
     // show lightbox when it's loaded
     $this.on('load_lightbox_end.pho', function(e) {
         // remember the scroll position for later
-        restore['scrollTop'] = $(document).scrollTop();
+        restore['scrollTop'] = $(window).scrollTop();
         // Hide the scrollbar without any content jumping around
         var width_with_scrollbar = $(window).width();
         $('body, html').css({'overflow': 'hidden'});
@@ -389,7 +433,7 @@ $(document).on('init_lightbox.pho', lightbox.select('lightbox'), function() {
         restore_loading_image.call(this, e);
 
         // unhide image
-        lightbox.get_img().show();
+        lightbox.get_img().attr('src', e.img.attr('src') ).show();
         // show lightbox
         tram(this).set({'background': e.image.element().css('background-color'), 'top': restore['scrollTop']  })
         .start({'opacity':1}).then( function() {
@@ -408,7 +452,7 @@ $(document).on('init_lightbox.pho', lightbox.select('lightbox'), function() {
     $this.on('hide_lightbox.pho', function() {
         // restore frames
         frameContainer.element().css({ 'display': restore.frame_container_display });
-        tram(document).set({ 'scrollTop': restore.scrollTop });
+        tram(window).set({ 'scrollTop': restore.scrollTop });
         tram(this).set({ 'top': restore.scrollTop });
 
         // fade out lightbox, and remove image
@@ -422,26 +466,15 @@ $(document).on('init_lightbox.pho', lightbox.select('lightbox'), function() {
         });
     });
 
-    var loader_container = $('<div class="loader_container"><div class="loader"></div>');
-    var ghost = null;
+    var loader_container = $('<div class="loader_container"><div class="loader"></div></div>');
 
     // transition when moving to next/prev image in lightbox
     $this.on('move_lightbox_start.pho', function(e) {
         // the old image
         var img = lightbox.get_img();
 
-        //show loader
-        loader_container.tram().add('opacity 0.276s ease-in-out 0.112s').set({'opacity':0});
-        img.after( loader_container );
-        loader_container.tram().start({'opacity':0.6})
-
-        // create ghost overlay
-        // delete old ghost
-        if( ghost !== null ) {
-            ghost.remove();
-        }
         // cloning current image
-        ghost = img.clone();
+        var ghost = img.clone();
         img.after(
             // force positioning above original image
             ghost.css({'position':'absolute'})
@@ -449,18 +482,28 @@ $(document).on('init_lightbox.pho', lightbox.select('lightbox'), function() {
         )
         // remove attribute after insert (removing it before didn't work)
         ghost.removeAttr('id');
+
+        // reset img
+        img.tram().set({'opacity':0}); //FIX: when setting `img.attr('src','')` the transition may be skipped
+        loader_container.tram().set({'opacity':1});
+        img.after( loader_container );
+        ghost.tram().add('left 0.476s ease-out').start({'left': (e.to=='prev'?1:-1)*$this.width()}).then(function() { ghost.remove(); });
+        img.add( loader_container )
+              .css({'position':'relative'})
+              .tram().set({'left':img.offset().left - (e.to=='prev'?1:-1)*$this.width()})
+              .add('left 0.476s ease-out').start({'left':0});
     });
 
     // transition to another image in the lightbox
     $this.on('move_lightbox_end.pho', function(e) {
         // fade background color of lightbox
-        tram(this).start({'background': e.image.element().css('background-color'), 'top':0})
+        tram(this).start({'background': e.image.element().css('background-color'), 'top':0});
         // fade in new image
-        tram(lightbox.get_img()).add('opacity 0.176s ease-out').set({'opacity':0, 'display':'block'}).start({'opacity':1});
-        // fade out old image
-        tram(ghost.add(loader_container )).add('opacity 0.176s ease-out').start({'opacity':0}).then(function() {
-            $(this.el).remove();
-        });
+        lightbox.get_img().attr('src', e.img.attr('src') )
+                .tram().add('opacity 0.176s ease-out').set({'opacity':0, 'display':'block'}).start({'opacity':1});
+        // remove old image and loader
+        loader_container.tram().add('opacity 0.276s ease-in-out 0.112s').start({'opacity':0})
+                        .then(function() { loader_container.remove(); });
     });
 
     // load caption of lightbox
@@ -523,11 +566,7 @@ $(document).on('init_frameContainer.pho', function() {
         scroll.unfollow();
         // animate
         if( !e.quiet ) {
-            scroll.to( element, function() {
-                focus_current_frame(element);
-            });
-        } else {
-            focus_current_frame(element);
+            scroll.to( element );
         }
     })
 });

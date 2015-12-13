@@ -291,8 +291,8 @@ $(document).on('init_lightbox.pho', lightbox.select('lightbox'), function() {
 
         restore_loading_image.call(this, e);
 
-        // unhide image
-        lightbox.get_img().show();
+        // set image
+        lightbox.get_img().attr('src', e.img.attr('src')).show();
         // show lightbox
         tram(this).set({'background': e.image.element().css('background-color'), 'top': restore['scrollTop']  })
         .start({'opacity':1}).then( function() {
@@ -360,7 +360,8 @@ $(document).on('init_lightbox.pho', lightbox.select('lightbox'), function() {
         // fade background color of lightbox
         tram(this).start({'background': e.image.element().css('background-color'), 'top':0})
         // fade in new image
-        tram(lightbox.get_img()).add('opacity 0.176s ease-out').set({'opacity':0, 'display':'block'}).start({'opacity':1});
+        tram( lightbox.get_img().attr('src', e.img.attr('src')) )
+            .add('opacity 0.176s ease-out').set({'opacity':0, 'display':'block'}).start({'opacity':1});
         // fade out old image
         tram(ghost.add(loader_container )).add('opacity 0.176s ease-out').start({'opacity':0}).then(function() {
             $(this.el).remove();

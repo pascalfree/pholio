@@ -385,9 +385,6 @@ var lightbox = {
         img.load(function() {
             var e = lightbox.element();
 
-            //insert image
-            lightbox.get_img().replaceWith( $(this).attr('id', lightbox._img_id).hide() );
-
             //load caption
             e.trigger({type:'lightbox_caption_load.pho',
                 text: image.caption.text,
@@ -396,7 +393,7 @@ var lightbox = {
             });
 
             //update hash
-            hash( null, image.id() );
+            hash( null, image.id(), null, !hash()[1] ); //don't spam history (mobile users might expect to close the lightbox by going back)
 
             // tootle lightbox navigation (hide if no more images)
             lightbox.navigate.toggle();
@@ -441,7 +438,7 @@ var lightbox = {
         //var image = $(this);
         //lightbox._current_image = image; //store current image for later usage.
 
-        lightbox._load(image, function() {
+        lightbox._load(image, function(img) {
             // cancel, if state is not 'showing' anymore
             if( lightbox._state != 1) {
                 lightbox.element().trigger({type:'load_lightbox_cancel.pho', image:image});
@@ -449,7 +446,7 @@ var lightbox = {
             }
 
             //finish animation
-            lightbox.element().trigger({type:'load_lightbox_end.pho', image:image});
+            lightbox.element().trigger({type:'load_lightbox_end.pho', image:image, img:img});
             lightbox._state = 2; //visible
         });
 
@@ -502,10 +499,11 @@ var lightbox = {
             /*# display previous or next image
             @param to: 'prev', 'next' or 'hash'.
                        'hash' will try to identify a prev or next action from the location hash, and apply it.
+            @returns true if moving is possible, false otherwise
             */
             //skip if lightbox is not visible
             if( lightbox._state != 2 ) {
-                return;
+                return false;
             }
 
             // hash function (history back)
@@ -515,17 +513,17 @@ var lightbox = {
 
                 //do nothing if image from hash matches displayed image (current)
                 if( !h[1] || h[1] == image.id() ) {
-                    return;
+                    return false;
                 }
 
                 // move prev or next depending on hash value
-                if( h[1] == lightbox._image_iterator.clone().prev().id() ) {
+                if( lightbox._image_iterator.has_prev() && h[1] == lightbox._image_iterator.clone().prev().id() ) {
                     to = 'prev';
-                } else if( h[1] == lightbox._image_iterator.clone().next().id() ) {
+                } else if( lightbox._image_iterator.has_next() && h[1] == lightbox._image_iterator.clone().next().id() ) {
                     to = 'next';
                 } else {
                     location.reload();
-                    return;
+                    return false;
                 }
             }
 
@@ -538,13 +536,13 @@ var lightbox = {
             } else {
                 //throw "Warning: Tried to move to inexistant image in lightbox.navigate.";
                 //ignore
-                return;
+                return false;
             }
 
             lightbox._e.trigger({type:'move_lightbox_start.pho', to:to});
 
-            // start an event for the transition to the new image --> animation.js
-            img = lightbox._load(to_image, function(img) {
+            // start an event for the transition to the new image --> view.js
+            lightbox._load(to_image, function(img) {
                 lightbox._e.trigger({type:'move_lightbox_end.pho', image:to_image, img:img, to:to});
             });
 
@@ -554,6 +552,7 @@ var lightbox = {
             } else if( to == 'next' && lightbox._image_iterator.has_next()  ) {
                 lightbox.preload_image( lightbox._image_iterator.clone().next() );
             }
+            return true;
         },
 
         // hide navigation
@@ -690,10 +689,12 @@ var navigate = {
   },
 
   move_event: function(to) {
-    return function() { return navigate.move(to); }
+    return function(e) { return navigate.move(to,e); }
   },
 
-  move: function(to) {
+  move: function(to,e) {
+      if(e) e.preventDefault();
+  
       if(to == 'hash') {
         return navigate._hash();
       }
