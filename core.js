@@ -117,7 +117,7 @@ function image_loader(image, size, current) {
         }
       }
     }
-    available_size = sizes.sort();
+    available_size = sizes.sort(function(a, b){return a-b}); //FIX: sort numerically
   }
 
   var size_iterator = 0;
@@ -1190,7 +1190,7 @@ Image.prototype.load = function( onload ) {
         $this.ratio = this.width/this.height;
 
         onload.apply($this);
-        this.onload = 1; // 1 = finished loading
+        $this.onload = 1; // 1 = finished loading
     });
 }
 
