@@ -20,6 +20,9 @@ function hash( frame, image, user, history ) {
   var h = window.location.hash.substr(1);
   h = h.split(',');
   // normalize
+  if( config.PAGE_LIST ) {
+      if( -1 == (h[0] = config.PAGE_LIST.indexOf( h[0] )) ) h[0] = false;
+  }
   hash._normalize(h);
 
   // set new value
@@ -29,7 +32,7 @@ function hash( frame, image, user, history ) {
 
   var changed = false;
   if( $.type(frame) == 'string' || $.type(frame) == 'number' ) {
-    changed = h[0] != frame; // only detect actual change
+    changed = h[0] !== frame; // only detect actual change
     h[0] = frame;
   }
   if( $.type(image) == 'string' ) { //check unnormalized image, because undefined is not a string
@@ -37,16 +40,21 @@ function hash( frame, image, user, history ) {
     h[1] = image_norm;
   }
   if( $.type(user) == 'string' ) {
-    changed = changed || h[1] != image;
+    changed = changed || h[2] != user;
     h[2] = user;
   }
   if( changed ) {
+    var frame = h[0];
+    if( config.PAGE_LIST ) { // use page name in url if page_list is defined
+        h[0] = config.PAGE_LIST[frame];
+    }
     if( history ) {
       window.location.hash = h.join(',');
     } else {
       //by: http://dev.enekoalonso.com/2008/12/29/modifying-the-url-hash-without-affecting-the-browser-history/
       window.location.replace(window.location.href.split('#')[0] + '#' + h.join(','))
     }
+    h[0] = frame; // undo page name substitution
   }
 
   // get value
@@ -275,26 +283,33 @@ Done.prototype._set_done = function() {
 
 //initialize when loaded
 $(document).ready(function() {
-  //initialize window location hash
-  if( hash()[0] === false ) { hash(config.DEFAULT_PAGE, null, null, false); }
-  var h = hash();
+    //initialize window location hash
+    var d = config.DEFAULT_PAGE;
+    if( config.PAGE_LIST ) {
+        if( -1 == (d = config.PAGE_LIST.indexOf( config.DEFAULT_PAGE )) )
+        {
+            throw "Error: if config.PAGE_LIST is defined config.DEFAULT_PAGE must be in the list."
+        }
+    }
+    if( hash()[0] === false ) { hash(d, null, null, false); }
+    var h = hash();
 
-  //initialize frames
-  frameContainer = new FrameContainer( h[0] );
+    //initialize frames
+    frameContainer = new FrameContainer( h[0] );
 
-  // wait for frameContainer to load
-  frameContainer.done(function() {
-      //frameContainer is ready
-      $(document).trigger('init_frameContainer.pho');
-      // initialize remaining components
-      $(document).trigger('init.pho');
+    // wait for frameContainer to load
+    frameContainer.done(function() {
+        //frameContainer is ready
+        $(document).trigger('init_frameContainer.pho');
+        // initialize remaining components
+        $(document).trigger('init.pho');
 
-      //reload images if window is resized
-      $(window).on("debouncedresize", function(e) {
-        lightbox.reload_image();
-        frameContainer.reload_images();
-      });
-  });
+        //reload images if window is resized
+        $(window).on("debouncedresize", function(e) {
+            lightbox.reload_image();
+            frameContainer.reload_images();
+        });
+    });
 });
 
 //// LIGHTBOX
@@ -780,14 +795,18 @@ var navigate = {
 
 //// FRAME CONTAINER
 
+/* Create a FrameContainer object
+ * @param page: the index of the initial page
+*/
 function FrameContainer( page ) {
     this._container = "div#pho-frame_container";
 
     this._frame = [];
 
-    this._current = null;
-    this._last = null;
-    this._first = null;
+    this._current = null; //number or index in config.PAGE_LIST of current page
+    this._last = null; // ^ of last loaded page
+    this._first = null; // ^ of first loaded page
+    // if config.PAGE_LIST is not defined, numeric pages are assumed: NUM_PAGE_MODE
     this._max_page = null;
 
     // event listeners
@@ -801,8 +820,7 @@ function FrameContainer( page ) {
     var frame = new Frame( page );
     var $this = this;
     frame.exists(function() {
-        $this._current = page;
-        $this._last = $this._first = page;
+        $this._current = $this._last = $this._first = page;
         this.insert_into( container );
         $this._frame[ page ] = this;
 
@@ -922,10 +940,19 @@ function Frame( id ) {
     this._id = id;
 
     // load viewer
-    if( id < 0 ) { return; } //don't load pages below 0
+    if( id < 0 //don't load pages below 0
+        || (config.PAGE_LIST && id >= config.PAGE_LIST.length) ) { // if page_list is known: don't load pages above last page
+        this._set_exists( false ); return;
+    }
     //load and insert page
     var $this = this;
-    this._e.load( config.PAGE_FOLDER + '/' + id + '.html', function(resp, status) {
+    var page;
+    if( config.PAGE_LIST ) {
+        page = config.PAGE_LIST[id];
+    } else {
+        page = id;
+    }
+    this._e.load( config.PAGE_FOLDER + '/' + page + '.html', function(resp, status) {
         if( status == "error" ) { //found last page
             $this._set_exists( false );
             return;
@@ -972,9 +999,9 @@ Frame.prototype.reload_images = function() {
 Frame.prototype.exists = function(callback_true, callback_false) {
     if( this._exists !== null ) {
         if( this._exists ) {
-            callback_true();
+            if( "function" == typeof(callback_true) ) callback_true();
         } else {
-            callback_false();
+            if( "function" == typeof(callback_false) ) callback_false();
         }
     } else {
         this._exists_callback_true = callback_true||null;
