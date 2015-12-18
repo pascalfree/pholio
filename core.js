@@ -279,10 +279,44 @@ Done.prototype._set_done = function() {
     }
 }
 
+//// CORE FUNCTIONS
+var pho = {};
+
+pho.include = function( file, type ) {
+    type = type || file.split('.').pop();
+    var insert;
+    switch( type ) {
+        case 'js':
+            insert = '<script src="' + file + '">';
+            break;
+        case 'css':
+            insert = '<link rel="stylesheet" href="' + file + '" type="text/css">';
+            break;
+    }
+    $('head').append(insert);
+}
+
+pho.include_once = function( file, type ) {
+    if( pho._included ) {
+        if( pho._included && -1 != pho._included.indexOf(file) ) {
+            return false; //file has been included before
+        }
+        pho._included.push(file);
+    } else {
+        pho._included = [file];
+    }
+    pho.include( file, type );
+    return true;
+}
+
 //// INITIALIZATION
 
 //initialize when loaded
 $(document).ready(function() {
+    //include
+    pho.include('themes/' + config.THEME + '/index.css');
+    pho.include('themes/' + config.THEME + '/view.js');
+
     //initialize window location hash
     var d = config.DEFAULT_PAGE;
     if( config.PAGE_LIST ) {
