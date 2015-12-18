@@ -145,7 +145,7 @@ var scroll = {
             }
            
             // for small pages: switch to the last/first page at the edges of the scroll space
-            if( top > $('html').height() - semi_window/2 - 10 ) {
+            if( top > $('html').height() - 3*semi_window/2 - 10 ) {
                 navigate.goto( frameContainer.get_page() - 1, true );
             }
             if( top < semi_window/2 + 10  ) {
